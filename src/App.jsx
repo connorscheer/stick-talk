@@ -138,7 +138,7 @@ function Avatar({ photo, name, style }) {
 // require being signed in — see README.md for the one-time Supabase setup
 // (table + policies). Signed-in accounts (Supabase Auth) are a separate
 // layer on top, used to carry a person's identity across devices.
-const STORAGE_KEYS = { posts: "sticktalk:posts", name: "sticktalk:my-name", profiles: "sticktalk:profiles", matches: "sticktalk:matches" };
+const STORAGE_KEYS = { posts: "sticktalk:posts", name: "sticktalk:my-name", profiles: "sticktalk:profiles", matches: "sticktalk:matches", follows: "sticktalk:follows" };
 
 async function loadShared(key, seed) {
   try {
@@ -566,6 +566,7 @@ export default function App() {
   const [myPhoto, setMyPhoto] = useState(null);
   const [myTees, setMyTees] = useState(2000); // Tees currency balance — display-only for now, no earn/spend wired up yet
   const [profiles, setProfiles] = useState({}); // { [name]: {initials, homeCourse, handicap, avgScore, bestRound, roundsCount, photo} }
+  const [follows, setFollows] = useState({}); // { [followerName]: { [followedName]: isoTimeFollowed } }
   const [viewingProfile, setViewingProfile] = useState(null); // name of the profile being viewed, or null
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -630,6 +631,9 @@ export default function App() {
       const loadedMatches = await loadShared(STORAGE_KEYS.matches, null);
       if (loadedMatches) setMatches(loadedMatches);
 
+      const loadedFollows = await loadShared(STORAGE_KEYS.follows, null);
+      if (loadedFollows) setFollows(loadedFollows);
+
       setDataLoaded(true);
     })();
   }, []);
@@ -681,6 +685,8 @@ export default function App() {
           return sameJson(next, prev) ? prev : next;
         });
       }
+      const freshFollows = await loadShared(STORAGE_KEYS.follows, null);
+      if (freshFollows) setFollows((prev) => (sameJson(freshFollows, prev) ? prev : freshFollows));
     }, 5000);
     return () => clearInterval(interval);
   }, [dataLoaded]);
@@ -916,6 +922,20 @@ export default function App() {
     setRequested((prev) => ({ ...prev, [id]: !prev[id] }));
   }
 
+  function toggleFollow(targetName) {
+    setFollows((prev) => {
+      const mine = { ...(prev[myName] || {}) };
+      if (mine[targetName]) {
+        delete mine[targetName];
+      } else {
+        mine[targetName] = new Date().toISOString();
+      }
+      const next = { ...prev, [myName]: mine };
+      saveShared(STORAGE_KEYS.follows, next);
+      return next;
+    });
+  }
+
   function respondToInbox(reqId, accept) {
     setInbox((prev) => prev.map((r) => (r.id === reqId ? { ...r, status: accept ? "accepted" : "declined" } : r)));
     if (accept) {
@@ -955,21 +975,20 @@ export default function App() {
 
   const feedPosts = [...posts].sort((a, b) => new Date(b.time) - new Date(a.time));
 
+  // Search finds people (by name), not feed/match content — every account
+  // publishes a `profiles` entry as soon as they sign in (see the effect
+  // that saves your own snapshot), so this doubles as a full user directory.
   const q = searchQuery.trim().toLowerCase();
-  const visibleFeedPosts = !q
-    ? feedPosts
-    : feedPosts.filter((p) => (p.author || "").toLowerCase().includes(q) || (p.text || "").toLowerCase().includes(q) || (p.kind === "round" && (p.round.course || "").toLowerCase().includes(q)));
-  const visibleMatches = !q
-    ? matches
-    : matches.filter((m) => (m.author || "").toLowerCase().includes(q) || (m.course || "").toLowerCase().includes(q) || (m.note || "").toLowerCase().includes(q));
+  const userSearchResults = !q ? [] : Object.keys(profiles).filter((n) => n !== myName && n.toLowerCase().includes(q));
 
   const pendingCount = inbox.filter((r) => r.status === "pending").length;
 
-  // Golf-clap and comment notifications, derived from the feed itself rather
-  // than a separate stored notifications table — anyone who claps/comments
-  // on one of my posts (other than me) shows up here, sorted by when the
-  // clap/comment actually happened. Likes/comments made before timestamps
-  // were added fall back to the post's own time so old data doesn't crash.
+  // Golf-clap, comment, and follow notifications, derived from the feed +
+  // follows data rather than a separate stored notifications table —
+  // anyone who claps/comments on one of my posts, or starts following me,
+  // shows up here, sorted by when it actually happened. Likes/comments made
+  // before timestamps were added fall back to the post's own time so old
+  // data doesn't crash.
   const activityNotifications = useMemo(() => {
     if (!myName) return [];
     const items = [];
@@ -984,9 +1003,14 @@ export default function App() {
         items.push({ id: `comment:${p.id}:${c.id}`, type: "comment", postId: p.id, actor: c.author, text: c.text, time: c.time || p.time });
       }
     }
+    for (const [follower, followingMap] of Object.entries(follows)) {
+      if (follower === myName) continue;
+      const followedAt = followingMap?.[myName];
+      if (followedAt) items.push({ id: `follow:${follower}`, type: "follow", actor: follower, time: followedAt });
+    }
     items.sort((a, b) => new Date(b.time) - new Date(a.time));
     return items;
-  }, [feedPosts, myName]);
+  }, [feedPosts, follows, myName]);
   const unseenActivityCount = activityNotifications.filter((n) => !seenActivityIds.includes(n.id)).length;
 
   function openInbox() {
@@ -1067,7 +1091,7 @@ export default function App() {
             </button>
             <input
               style={styles.headerSearchInput}
-              placeholder={tab === "match" ? "Search matches…" : "Search the feed…"}
+              placeholder="Search people…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               autoFocus
@@ -1106,9 +1130,23 @@ export default function App() {
       </header>
 
       <main style={styles.main}>
+        {showSearch && searchQuery.trim() ? (
+          <UserSearchResults
+            results={userSearchResults}
+            profiles={profiles}
+            myFollowing={follows[myName] || {}}
+            onToggleFollow={toggleFollow}
+            onOpenProfile={(name) => {
+              setShowSearch(false);
+              setSearchQuery("");
+              openProfile(name);
+            }}
+          />
+        ) : (
+          <>
         {tab === "home" && (
           <HomeTab
-            posts={visibleFeedPosts}
+            posts={feedPosts}
             onLike={toggleLike}
             onDelete={deletePost}
             myName={myName}
@@ -1126,7 +1164,7 @@ export default function App() {
         )}
         {tab === "match" && (
           <MatchTab
-            matches={visibleMatches}
+            matches={matches}
             myName={myName}
             onOpenComposer={() => setShowMatchComposer(true)}
             onToggleJoin={toggleJoinMatch}
@@ -1162,6 +1200,8 @@ export default function App() {
             onSavePhoto={saveMyPhoto}
           />
         )}
+          </>
+        )}
       </main>
 
       <nav style={styles.nav}>
@@ -1191,12 +1231,19 @@ export default function App() {
           activity={activityNotifications}
           seenActivityIds={seenActivityIds}
           golfers={golfers}
+          myFollowing={follows[myName] || {}}
           onClose={() => setShowInbox(false)}
           onRespond={respondToInbox}
+          onFollowBack={(name) => toggleFollow(name)}
           onOpenPost={(postId, notificationId) => {
             markActivitySeen(notificationId);
             setShowInbox(false);
             setViewingPost(postId);
+          }}
+          onOpenProfile={(name, notificationId) => {
+            markActivitySeen(notificationId);
+            setShowInbox(false);
+            openProfile(name);
           }}
         />
       )}
@@ -1251,6 +1298,8 @@ export default function App() {
           name={viewingProfile}
           profile={profiles[viewingProfile]}
           isMine={viewingProfile === myName}
+          isFollowing={!!(follows[myName] || {})[viewingProfile]}
+          onToggleFollow={() => toggleFollow(viewingProfile)}
           onClose={() => setViewingProfile(null)}
         />
       )}
@@ -1994,7 +2043,47 @@ function LikersModal({ post, onClose, onOpenProfile }) {
   );
 }
 
-function ProfileViewModal({ name, profile, isMine, onClose }) {
+function UserSearchResults({ results, profiles, myFollowing, onToggleFollow, onOpenProfile }) {
+  if (results.length === 0) {
+    return (
+      <div style={{ ...styles.empty, color: "rgba(255,255,255,0.75)" }}>
+        <p style={{ ...styles.emptyTitle, color: "#FFFFFF" }}>No one found</p>
+        <p style={styles.emptyBody}>Try a different name.</p>
+      </div>
+    );
+  }
+  return (
+    <div style={styles.tabPad}>
+      {results.map((name) => {
+        const profile = profiles[name];
+        const isFollowing = !!myFollowing[name];
+        return (
+          <div key={name} style={styles.rowCard}>
+            <button style={styles.postAuthorBtn} onClick={() => onOpenProfile(name)}>
+              <Avatar photo={profile?.photo} name={name} style={styles.postAvatar} />
+              <div style={{ textAlign: "left" }}>
+                <div style={styles.cardName}>{name}</div>
+                {profile?.homeCourse && (
+                  <div style={styles.cardMeta}>
+                    <MapPin size={12} color="#9C9990" /> {profile.homeCourse}
+                  </div>
+                )}
+              </div>
+            </button>
+            <button
+              style={{ ...styles.followBackBtn, ...(isFollowing ? styles.followBackBtnDone : {}) }}
+              onClick={() => onToggleFollow(name)}
+            >
+              {isFollowing ? "Following" : "Follow"}
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ProfileViewModal({ name, profile, isMine, isFollowing, onToggleFollow, onClose }) {
   return (
     <div style={styles.modalOverlay} onClick={onClose}>
       <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -2016,6 +2105,14 @@ function ProfileViewModal({ name, profile, isMine, onClose }) {
             <div style={styles.profileViewCourse}>
               <MapPin size={12} color="#9C9990" /> {profile.homeCourse}
             </div>
+          )}
+          {!isMine && (
+            <button
+              style={{ ...styles.followBtn, ...(isFollowing ? styles.followBtnDone : {}) }}
+              onClick={onToggleFollow}
+            >
+              {isFollowing ? "Following" : "Follow"}
+            </button>
           )}
         </div>
 
@@ -2310,7 +2407,7 @@ function MatchComposerModal({ onClose, onSubmit }) {
   );
 }
 
-function InboxModal({ inbox, activity = [], seenActivityIds = [], golfers, onClose, onRespond, onOpenPost }) {
+function InboxModal({ inbox, activity = [], seenActivityIds = [], golfers, myFollowing = {}, onClose, onRespond, onOpenPost, onOpenProfile, onFollowBack }) {
   const pending = inbox.filter((r) => r.status === "pending");
   const resolved = inbox.filter((r) => r.status !== "pending");
 
@@ -2331,13 +2428,36 @@ function InboxModal({ inbox, activity = [], seenActivityIds = [], golfers, onClo
         {pending.length === 0 && resolved.length === 0 && activity.length === 0 && (
           <div style={styles.empty}>
             <p style={styles.emptyTitle}>No notifications yet</p>
-            <p style={styles.emptyBody}>Golf claps, comments, and match requests will show up here.</p>
+            <p style={styles.emptyBody}>Golf claps, comments, new followers, and match requests will show up here.</p>
           </div>
         )}
 
         {activity.length > 0 && <div style={styles.sectionLabel}>Activity</div>}
         {activity.map((n) => {
           const unread = !seenActivityIds.includes(n.id);
+          if (n.type === "follow") {
+            const alreadyFollowing = !!myFollowing[n.actor];
+            return (
+              <div key={n.id} style={styles.activityRow}>
+                {unread && <span style={styles.activityUnreadDot} aria-hidden="true" />}
+                <button style={styles.activityRowClickable} onClick={() => onOpenProfile(n.actor, n.id)}>
+                  <div style={styles.avatarSm}>{initialsOf(n.actor)}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={styles.cardMeta}>
+                      <span style={{ color: "#FFFFFF", fontWeight: 700 }}>{n.actor}</span> started following you
+                    </div>
+                    <div style={styles.activityTime}>{timeAgo(n.time)}</div>
+                  </div>
+                </button>
+                <button
+                  style={{ ...styles.followBackBtn, ...(alreadyFollowing ? styles.followBackBtnDone : {}) }}
+                  onClick={() => onFollowBack(n.actor)}
+                >
+                  {alreadyFollowing ? "Following" : "Follow back"}
+                </button>
+              </div>
+            );
+          }
           return (
             <button key={n.id} style={styles.activityRow} onClick={() => onOpenPost(n.postId, n.id)}>
               {unread && <span style={styles.activityUnreadDot} aria-hidden="true" />}
@@ -3280,8 +3400,11 @@ const styles = {
   inboxBadge: { position: "absolute", top: -4, right: -4, background: "#C1443A", color: "#FFFFFF", fontSize: 10, fontWeight: 700, borderRadius: 9, minWidth: 17, height: 17, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" },
   inboxCard: { background: "#232220", border: "1.5px solid #74C69D", borderRadius: 14, padding: 13, marginBottom: 10 },
   activityRow: { display: "flex", alignItems: "center", gap: 10, width: "100%", background: "#232220", border: "1.5px solid #74C69D", borderRadius: 14, padding: 13, marginBottom: 10, textAlign: "left" },
+  activityRowClickable: { display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, background: "none", border: "none", padding: 0, textAlign: "left" },
   activityUnreadDot: { width: 8, height: 8, borderRadius: "50%", background: "#74C69D", flexShrink: 0 },
   activityTime: { fontSize: 11, color: "#6B6963", marginTop: 3 },
+  followBackBtn: { flexShrink: 0, background: "#74C69D", border: "none", borderRadius: 999, padding: "7px 12px", color: "#000000", fontSize: 12, fontWeight: 700 },
+  followBackBtnDone: { background: "none", border: "1.5px solid #4A4844", color: "#9C9990" },
   inboxNote: { fontSize: 12.5, color: "#A3A199", marginTop: 5, fontStyle: "italic" },
   declineBtn: { flex: 1, background: "transparent", border: "1.5px solid #74C69D", color: "#A3A199", borderRadius: 8, fontSize: 12.5, fontWeight: 700, padding: "8px 0" },
   acceptBtn: { flex: 1, background: "#74C69D", border: "none", color: "#000000", borderRadius: 8, fontSize: 12.5, fontWeight: 700, padding: "8px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 },
@@ -3392,6 +3515,8 @@ const styles = {
   profileViewName: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 20, color: "#FFFFFF", marginTop: 8 },
   profileViewYouTag: { fontSize: 13, color: "#74C69D", fontWeight: 500 },
   profileViewCourse: { fontSize: 12.5, color: "#9C9990", marginTop: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 },
+  followBtn: { marginTop: 12, background: "#74C69D", border: "none", borderRadius: 999, padding: "9px 22px", color: "#000000", fontSize: 13.5, fontWeight: 700 },
+  followBtnDone: { background: "none", border: "1.5px solid #4A4844", color: "#9C9990" },
   profileViewStamp: { background: "#171513", border: "1.5px solid #74C69D", borderRadius: 12, padding: "12px 10px", display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 14 },
   profileViewStampLabel: { fontSize: 10, color: "#9C9990", fontWeight: 700, letterSpacing: 0.5, marginTop: 4 },
   profileViewStampValue: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 30, color: "#74C69D", marginTop: 2 },
