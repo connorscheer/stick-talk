@@ -3199,7 +3199,7 @@ const styles = {
   chartCard: { background: "#232220", border: "1.5px solid #74C69D", borderRadius: 14, padding: "12px 8px", marginBottom: 14 },
   chartTitle: { fontSize: 12.5, color: "#9C9990", marginBottom: 4, paddingLeft: 8 },
   sectionLabel: { fontSize: 12.5, color: "#9C9990", fontWeight: 600, margin: "4px 0 8px", textTransform: "uppercase", letterSpacing: 0.6 },
-  stickTalkBadge: { height: 34, width: "auto", display: "block" },
+  stickTalkBadge: { height: 46, width: "auto", display: "block" },
   filterCard: { background: "#232220", border: "1.5px solid #74C69D", borderRadius: 14, padding: 14, marginBottom: 14 },
   filterHead: { display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: "#74C69D", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.6 },
   filterLabel: { display: "block", fontSize: 12.5, color: "#FFFFFF", marginBottom: 10 },
