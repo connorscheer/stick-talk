@@ -1418,7 +1418,7 @@ const ZOOM_STEPS = [1, 1.8, 2.6];
 // Fullscreen post viewer: media gets a bounded height instead of stretching
 // to fill the whole screen, so author/actions/reply sit below it in normal
 // document flow (Twitter-style) rather than floating on top of the image.
-const MEDIA_LARGE_HEIGHT = "58vh";
+const MEDIA_LARGE_HEIGHT = "64vh";
 
 // Fixed box height (px) shared by every scorecard and photo in the feed —
 // measured from real posted scorecards (they range ~332-379px depending on
@@ -1485,7 +1485,7 @@ function PostMedia({ post: p, large, onOpen }) {
       return (
         <div style={{ ...styles.postScorecardWrap, ...wrapStyle }}>
           <Item>
-            <Scorecard round={p.round} />
+            <Scorecard round={p.round} large={large} />
           </Item>
         </div>
       );
@@ -1512,7 +1512,7 @@ function PostMedia({ post: p, large, onOpen }) {
         {hasScorecard && (
           <div style={{ ...styles.postMediaScrollItem, height: large ? "100%" : MEDIA_BOX_HEIGHT }}>
             <Item>
-              <Scorecard round={p.round} />
+              <Scorecard round={p.round} large={large} />
             </Item>
           </div>
         )}
@@ -1713,12 +1713,11 @@ function PostViewerModal({ post: p, onClose, onLike, onOpenComments, onOpenLiker
         )}
       </div>
 
-      <div style={styles.postViewerScroll}>
-        <div style={styles.postViewerMediaWrap}>
-          <PostMedia post={p} large />
-        </div>
+      <div style={styles.postViewerMediaWrap}>
+        <PostMedia post={p} large />
+      </div>
 
-        <div style={styles.postViewerBody}>
+      <div style={styles.postViewerBody}>
           <button style={styles.postViewerAuthorRow} onClick={() => onOpenProfile(p.author)}>
             <Avatar photo={authorPhoto} name={p.author} style={{ ...styles.postAvatar, width: 40, height: 40 }} />
             <div style={{ textAlign: "left" }}>
@@ -1772,7 +1771,6 @@ function PostViewerModal({ post: p, onClose, onLike, onOpenComments, onOpenLiker
           <button style={styles.postViewerReplyBar} onClick={() => onOpenComments(p.id)}>
             Add a comment…
           </button>
-        </div>
       </div>
     </div>
   );
@@ -2546,7 +2544,7 @@ function scoreColor(diff) {
   return "#C1443A"; // double or worse
 }
 
-function Scorecard({ round }) {
+function Scorecard({ round, large }) {
   const hasHoles = Array.isArray(round.holes) && round.holes.length === 18;
   const diff = differential(round.score, round.rating, round.slope);
   const toPar = round.score - 72;
@@ -2641,7 +2639,7 @@ function Scorecard({ round }) {
   }
 
   return (
-    <div style={styles.scorecardWrap}>
+    <div style={{ ...styles.scorecardWrap, ...(large ? { height: "auto", minHeight: "100%" } : {}) }}>
       <div style={styles.scorecardTop}>
         <div>
           <div style={styles.scorecardTitle}>{round.course}</div>
@@ -3368,12 +3366,11 @@ const styles = {
   ghinModalCopy: { fontSize: 13, color: "#A3A199", lineHeight: 1.5, marginBottom: 14 },
   settingsRow: { width: "100%", background: "#232220", border: "1.5px solid #74C69D", borderRadius: 10, padding: "13px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", color: "#FFFFFF", fontSize: 13.5, marginBottom: 8 },
   modalOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", zIndex: 10, animation: "overlayIn 200ms cubic-bezier(0.23, 1, 0.32, 1) both" },
-  postViewerOverlay: { position: "fixed", inset: 0, background: "#000000", zIndex: 20, display: "flex", flexDirection: "column", fontFamily: "'Baloo 2', sans-serif", touchAction: "pan-y" },
-  postViewerScroll: { flex: 1, minHeight: 0, overflowY: "auto", touchAction: "pan-y" },
-  postViewerMediaWrap: { display: "flex", flexDirection: "column" },
-  postViewerTop: { flexShrink: 0, position: "sticky", top: 0, zIndex: 2, background: "#000000", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px" },
+  postViewerOverlay: { position: "fixed", inset: 0, background: "#000000", zIndex: 20, display: "flex", flexDirection: "column", fontFamily: "'Baloo 2', sans-serif" },
+  postViewerMediaWrap: { display: "flex", flexDirection: "column", flexShrink: 0 },
+  postViewerTop: { flexShrink: 0, background: "#000000", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px" },
   postViewerIconBtn: { background: "none", border: "none", borderRadius: "50%", width: 38, height: 38, display: "flex", alignItems: "center", justifyContent: "center" },
-  postViewerBody: { padding: "12px 0 18px" },
+  postViewerBody: { flex: 1, minHeight: 0, overflowY: "auto", touchAction: "pan-y", padding: "12px 0 18px" },
   postViewerAuthorRow: { display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", padding: "0 16px", textAlign: "left" },
   postViewerDivider: { height: 1, background: "rgba(255,255,255,0.12)", margin: "14px 0" },
   postViewerActionRow: { display: "flex", alignItems: "center", gap: 22, padding: "0 16px" },
