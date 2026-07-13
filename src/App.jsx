@@ -882,7 +882,15 @@ export default function App() {
         if (p.id !== id) return p;
         const likedBy = p.likedBy || [];
         const alreadyLiked = likedBy.includes(myName);
-        return { ...p, likedBy: alreadyLiked ? likedBy.filter((n) => n !== myName) : [...likedBy, myName] };
+        const likedAt = p.likedAt || {};
+        return {
+          ...p,
+          likedBy: alreadyLiked ? likedBy.filter((n) => n !== myName) : [...likedBy, myName],
+          // Kept separate from likedBy (rather than switching it to an array of
+          // {name, time} objects) so every existing likedBy.includes/.filter/.map
+          // call site — used all over the feed/likers UI — didn't need touching.
+          likedAt: alreadyLiked ? likedAt : { ...likedAt, [myName]: new Date().toISOString() },
+        };
       })
     );
   }
@@ -898,7 +906,7 @@ export default function App() {
     updatePosts((prev) =>
       prev.map((p) =>
         p.id === postId
-          ? { ...p, comments: [...p.comments, { id: "c-" + Date.now(), author: myName, text: text.trim() }] }
+          ? { ...p, comments: [...p.comments, { id: "c-" + Date.now(), author: myName, text: text.trim(), time: new Date().toISOString() }] }
           : p
       )
     );
@@ -959,7 +967,9 @@ export default function App() {
 
   // Golf-clap and comment notifications, derived from the feed itself rather
   // than a separate stored notifications table — anyone who claps/comments
-  // on one of my posts (other than me) shows up here, most recent post first.
+  // on one of my posts (other than me) shows up here, sorted by when the
+  // clap/comment actually happened. Likes/comments made before timestamps
+  // were added fall back to the post's own time so old data doesn't crash.
   const activityNotifications = useMemo(() => {
     if (!myName) return [];
     const items = [];
@@ -967,23 +977,28 @@ export default function App() {
       if (p.author !== myName) continue;
       for (const liker of p.likedBy || []) {
         if (liker === myName) continue;
-        items.push({ id: `like:${p.id}:${liker}`, type: "like", postId: p.id, actor: liker });
+        items.push({ id: `like:${p.id}:${liker}`, type: "like", postId: p.id, actor: liker, time: p.likedAt?.[liker] || p.time });
       }
       for (const c of p.comments || []) {
         if (c.author === myName) continue;
-        items.push({ id: `comment:${p.id}:${c.id}`, type: "comment", postId: p.id, actor: c.author, text: c.text });
+        items.push({ id: `comment:${p.id}:${c.id}`, type: "comment", postId: p.id, actor: c.author, text: c.text, time: c.time || p.time });
       }
     }
+    items.sort((a, b) => new Date(b.time) - new Date(a.time));
     return items;
   }, [feedPosts, myName]);
   const unseenActivityCount = activityNotifications.filter((n) => !seenActivityIds.includes(n.id)).length;
 
   function openInbox() {
     setShowInbox(true);
-    const ids = activityNotifications.map((n) => n.id);
-    if (ids.length === 0) return;
+  }
+
+  // Only the notification actually tapped is marked read — opening the
+  // inbox to glance at it no longer silently clears the whole badge.
+  function markActivitySeen(id) {
     setSeenActivityIds((prev) => {
-      const next = Array.from(new Set([...prev, ...ids]));
+      if (prev.includes(id)) return prev;
+      const next = [...prev, id];
       savePersonal("sticktalk:seen-notifications", next);
       return next;
     });
@@ -1174,10 +1189,12 @@ export default function App() {
         <InboxModal
           inbox={inbox}
           activity={activityNotifications}
+          seenActivityIds={seenActivityIds}
           golfers={golfers}
           onClose={() => setShowInbox(false)}
           onRespond={respondToInbox}
-          onOpenPost={(postId) => {
+          onOpenPost={(postId, notificationId) => {
+            markActivitySeen(notificationId);
             setShowInbox(false);
             setViewingPost(postId);
           }}
@@ -2222,7 +2239,7 @@ function MatchComposerModal({ onClose, onSubmit }) {
   );
 }
 
-function InboxModal({ inbox, activity = [], golfers, onClose, onRespond, onOpenPost }) {
+function InboxModal({ inbox, activity = [], seenActivityIds = [], golfers, onClose, onRespond, onOpenPost }) {
   const pending = inbox.filter((r) => r.status === "pending");
   const resolved = inbox.filter((r) => r.status !== "pending");
 
@@ -2248,23 +2265,28 @@ function InboxModal({ inbox, activity = [], golfers, onClose, onRespond, onOpenP
         )}
 
         {activity.length > 0 && <div style={styles.sectionLabel}>Activity</div>}
-        {activity.map((n) => (
-          <button key={n.id} style={styles.activityRow} onClick={() => onOpenPost(n.postId)}>
-            <div style={styles.avatarSm}>{initialsOf(n.actor)}</div>
-            <div style={{ flex: 1 }}>
-              {n.type === "like" ? (
-                <div style={styles.cardMeta}>
-                  <span style={{ color: "#FFFFFF", fontWeight: 700 }}>{n.actor}</span> gave you a golf clap 👏
-                </div>
-              ) : (
-                <div style={styles.cardMeta}>
-                  <span style={{ color: "#FFFFFF", fontWeight: 700 }}>{n.actor}</span> commented: "{n.text}"
-                </div>
-              )}
-            </div>
-            <ChevronRight size={16} color="#9C9990" />
-          </button>
-        ))}
+        {activity.map((n) => {
+          const unread = !seenActivityIds.includes(n.id);
+          return (
+            <button key={n.id} style={styles.activityRow} onClick={() => onOpenPost(n.postId, n.id)}>
+              {unread && <span style={styles.activityUnreadDot} aria-hidden="true" />}
+              <div style={styles.avatarSm}>{initialsOf(n.actor)}</div>
+              <div style={{ flex: 1 }}>
+                {n.type === "like" ? (
+                  <div style={styles.cardMeta}>
+                    <span style={{ color: "#FFFFFF", fontWeight: 700 }}>{n.actor}</span> gave you a golf clap 👏
+                  </div>
+                ) : (
+                  <div style={styles.cardMeta}>
+                    <span style={{ color: "#FFFFFF", fontWeight: 700 }}>{n.actor}</span> commented: "{n.text}"
+                  </div>
+                )}
+                <div style={styles.activityTime}>{timeAgo(n.time)}</div>
+              </div>
+              <ChevronRight size={16} color="#9C9990" />
+            </button>
+          );
+        })}
 
         {pending.length > 0 && <div style={styles.sectionLabel}>Pending</div>}
         {pending.map((r) => {
@@ -3187,6 +3209,8 @@ const styles = {
   inboxBadge: { position: "absolute", top: -4, right: -4, background: "#C1443A", color: "#FFFFFF", fontSize: 10, fontWeight: 700, borderRadius: 9, minWidth: 17, height: 17, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" },
   inboxCard: { background: "#232220", border: "1.5px solid #74C69D", borderRadius: 14, padding: 13, marginBottom: 10 },
   activityRow: { display: "flex", alignItems: "center", gap: 10, width: "100%", background: "#232220", border: "1.5px solid #74C69D", borderRadius: 14, padding: 13, marginBottom: 10, textAlign: "left" },
+  activityUnreadDot: { width: 8, height: 8, borderRadius: "50%", background: "#74C69D", flexShrink: 0 },
+  activityTime: { fontSize: 11, color: "#6B6963", marginTop: 3 },
   inboxNote: { fontSize: 12.5, color: "#A3A199", marginTop: 5, fontStyle: "italic" },
   declineBtn: { flex: 1, background: "transparent", border: "1.5px solid #74C69D", color: "#A3A199", borderRadius: 8, fontSize: 12.5, fontWeight: 700, padding: "8px 0" },
   acceptBtn: { flex: 1, background: "#74C69D", border: "none", color: "#000000", borderRadius: 8, fontSize: 12.5, fontWeight: 700, padding: "8px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 },
