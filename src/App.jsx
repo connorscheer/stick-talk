@@ -3203,7 +3203,10 @@ const styles = {
   // thumb was resting on a photo/scorecard. "pan-x pan-y" lets the browser's
   // normal gesture-direction detection decide: a mostly-horizontal drag
   // scrolls the carousel, a mostly-vertical drag scrolls the page.
-  postMediaScroll: { display: "flex", alignItems: "flex-start", gap: 10, overflowX: "auto", overflowY: "hidden", touchAction: "pan-x pan-y", overscrollBehaviorY: "contain", scrollSnapType: "x mandatory", scrollbarWidth: "none", msOverflowStyle: "none", marginTop: 10 },
+  // No overscrollBehaviorY here — with overflowY hidden it blocked desktop
+  // mouse-wheel scroll from chaining up to the page (touch was unaffected
+  // since touchAction already governs that).
+  postMediaScroll: { display: "flex", alignItems: "flex-start", gap: 10, overflowX: "auto", overflowY: "hidden", touchAction: "pan-x pan-y", scrollSnapType: "x mandatory", scrollbarWidth: "none", msOverflowStyle: "none", marginTop: 10 },
   postMediaScrollItem: { flex: "0 0 100%", scrollSnapAlign: "start" },
   postMediaDots: { display: "flex", justifyContent: "center", gap: 6, marginTop: 8 },
   postMediaDot: { width: 6, height: 6, borderRadius: "50%" },
