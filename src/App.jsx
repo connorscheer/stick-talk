@@ -3411,7 +3411,7 @@ const styles = {
   scoreMarkRing: { display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 24, height: 24, border: "1.5px solid #000000", boxSizing: "border-box" },
   scoreMarkOuterRing: { minWidth: 30, height: 30, padding: 2 },
   scoreMarkSlot: { height: 32, display: "flex", alignItems: "center", justifyContent: "center" },
-  scorecardDivider: { height: 1, background: "#9C9990", margin: "16px 0" },
+  scorecardDivider: { width: "100%", height: 2, background: "#8B8880", margin: "16px 0", flexShrink: 0 },
   scorecardSummaryRow: { display: "flex", marginTop: 14, paddingTop: 14, borderTop: "1px solid rgba(0,0,0,0.12)" },
   scorecardSummaryItem: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center" },
   scorecardSummaryLabel: { fontSize: 10.5, color: "#6B6963", fontWeight: 700, letterSpacing: 0.5 },
