@@ -17,12 +17,13 @@ Known-good conventions to keep following:
 - Workflow: after any change, `npm install && npm run build` in the repo to verify, then commit + push to `main` directly (Vercel auto-deploys) — the user has asked not to be gated behind a confirmation question for routine pushes.
 - There's a `stick-talk-ui` Claude Code skill (local to the user's machine, not in this repo) that captures this design system in more detail.
 
-Just landed (this session): fixed an unguarded `.toLowerCase()` crash in the search filter (missing `author`/`course` fields would throw) and removed dead `kindMeta`/`meta` code in `PostCard` that never rendered anything.
+Just landed (this session): scorecard and photos now always render in the same size box within a post (scorecard scrolls internally if its content is taller), and clicking any post media opens a fullscreen `PostViewerModal` — media fills most of the screen, author row pinned at top, caption + golf-clap/comment/share actions pinned at the bottom. Also fixed an unguarded `.toLowerCase()` crash in the search filter (missing `author`/`course` fields would throw) and removed dead `kindMeta`/`meta` code in `PostCard` that never rendered anything.
 
 No open bugs or in-progress features are currently tracked. Next session should ask the user what's next rather than assume — this file will be kept current going forward.
 
 ## Session Log
 
+- **2026-07-13**: Added fullscreen `PostViewerModal` (click any post media to zoom in — media fills the screen, actions pinned to the bottom) and made scorecard/photo sizing consistent within a post's media (both boxed to the same dimensions).
 - **2026-07-13**: Fixed search-filter crash guard (missing author/course fields), removed dead `kindMeta` code in `PostCard`. Set up this handoff workflow (`HANDOFF.md` + `CLAUDE.md`).
 - **2026-07-13**: Media carousel: replaced scrollbar with dot indicators, locked carousel scroll to horizontal-only (was catching vertical swipes on mobile).
 - **2026-07-13**: Switched app background to solid black; feed posts changed from boxed cards to Twitter/X-style rows divided by a mint line.
