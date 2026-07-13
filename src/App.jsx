@@ -1415,6 +1415,10 @@ function MatchConfirmedTile({ post }) {
 // scrolling is locked to horizontal so a vertical swipe on mobile scrolls the
 // feed instead of fighting with the carousel.
 const ZOOM_STEPS = [1, 1.8, 2.6];
+// Fullscreen post viewer: media gets a bounded height instead of stretching
+// to fill the whole screen, so author/actions/reply sit below it in normal
+// document flow (Twitter-style) rather than floating on top of the image.
+const MEDIA_LARGE_HEIGHT = "58vh";
 
 // Fixed box height (px) shared by every scorecard and photo in the feed —
 // measured from real posted scorecards (they range ~332-379px depending on
@@ -1450,9 +1454,10 @@ function PostMedia({ post: p, large, onOpen }) {
   const boxStyle = large
     ? { width: "100%", height: "100%", overflow: "auto", scrollbarWidth: "none", msOverflowStyle: "none", cursor: zoom === ZOOM_STEPS[ZOOM_STEPS.length - 1] ? "zoom-out" : "zoom-in" }
     : { width: "100%", height: MEDIA_BOX_HEIGHT, overflow: "hidden" };
-  // In the fullscreen viewer the media should stretch to fill the space its
-  // flex parent gives it, rather than sizing to its own content.
-  const wrapStyle = large ? { flex: 1, minHeight: 0, display: "flex", flexDirection: "column", margin: 0 } : undefined;
+  // In the fullscreen viewer the media gets a bounded height (not the whole
+  // screen) so the author/actions/reply bar below it sit in normal document
+  // flow instead of floating on top of the image.
+  const wrapStyle = large ? { width: "100%", height: MEDIA_LARGE_HEIGHT, display: "flex", flexDirection: "column", margin: 0, flexShrink: 0 } : undefined;
 
   function Item({ children }) {
     if (!large) {
@@ -1499,7 +1504,7 @@ function PostMedia({ post: p, large, onOpen }) {
 
   return (
     <div style={wrapStyle}>
-      <div ref={scrollRef} style={{ ...styles.postMediaScroll, ...(large ? { flex: 1, minHeight: 0 } : { height: MEDIA_BOX_HEIGHT }) }} onScroll={handleScroll}>
+      <div ref={scrollRef} style={{ ...styles.postMediaScroll, ...(large ? { height: MEDIA_LARGE_HEIGHT } : { height: MEDIA_BOX_HEIGHT }) }} onScroll={handleScroll}>
         {hasScorecard && (
           <div style={{ ...styles.postMediaScrollItem, height: large ? "100%" : MEDIA_BOX_HEIGHT }}>
             <Item>
@@ -1645,10 +1650,11 @@ function PostCard({ post: p, onLike, onOpenComments, onOpenLikers, onDelete, myN
   );
 }
 
-// Full-screen "zoomed in" view of a single post: the media (scorecard/photos)
-// fills most of the screen, with the author row pinned at top and the
-// caption + golf-clap/comment/share actions pinned at the bottom — same
-// actions as the feed card, just laid out for a focused, one-post view.
+// Full-screen "zoomed in" view of a single post, laid out like X/Twitter's
+// tweet detail screen: a plain top bar, the media at a bounded height (not
+// full-bleed), then author/caption/actions/reply stacked below it in normal
+// document flow — so zooming the media only scales the media, nothing below
+// it shifts, and the whole thing scrolls together if content runs long.
 function PostViewerModal({ post: p, onClose, onLike, onOpenComments, onOpenLikers, onOpenProfile, onDelete, myName, profiles }) {
   const [menuOpen, setMenuOpen] = useState(false);
   if (!p) return null;
@@ -1673,7 +1679,7 @@ function PostViewerModal({ post: p, onClose, onLike, onOpenComments, onOpenLiker
     <div style={styles.postViewerOverlay}>
       <div style={styles.postViewerTop}>
         <button style={styles.postViewerIconBtn} onClick={onClose} aria-label="Back">
-          <ChevronLeft size={24} color="#FFFFFF" />
+          <ChevronLeft size={22} color="#FFFFFF" />
         </button>
         {isMine ? (
           <div style={{ position: "relative" }}>
@@ -1703,64 +1709,66 @@ function PostViewerModal({ post: p, onClose, onLike, onOpenComments, onOpenLiker
         )}
       </div>
 
-      <div style={styles.postViewerMediaWrap}>
-        <PostMedia post={p} large />
-      </div>
-
-      <div style={styles.postViewerBottom}>
-        <button style={{ ...styles.postAuthorBtn, ...styles.postViewerAuthorChip }} onClick={() => onOpenProfile(p.author)}>
-          <Avatar photo={authorPhoto} name={p.author} style={{ ...styles.postAvatar, width: 34, height: 34 }} />
-          <div style={{ textAlign: "left" }}>
-            <div style={{ ...styles.cardName, color: "#FFFFFF" }}>{p.author}</div>
-            <div style={styles.cardMeta}>
-              {p.kind === "round" ? (
-                <>
-                  <MapPin size={12} color="#9C9990" /> {p.round.course} · {timeAgo(p.time)}
-                </>
-              ) : (
-                <>{timeAgo(p.time)}</>
-              )}
-            </div>
-          </div>
-        </button>
-
-        {p.text && <div style={{ ...styles.noteText, ...styles.postViewerCaptionChip, color: "#FFFFFF" }}>{p.text}</div>}
-
-        <div style={styles.postViewerPillRow}>
-          <button style={styles.postViewerPill} onClick={() => onLike(p.id)} aria-label="Golf clap">
-            <span
-              style={{ fontSize: 17, lineHeight: 1, ...golfClapIconStyle(iLiked) }}
-            >
-              👏
-            </span>
-            {likedBy.length > 0 && <span>{likedBy.length}</span>}
-          </button>
-          <button style={styles.postViewerPill} onClick={() => onOpenComments(p.id)} aria-label="Comment">
-            <MessageCircle size={17} color="#9C9990" />
-            {p.comments.length > 0 && <span>{p.comments.length}</span>}
-          </button>
-          <button style={styles.postViewerPill} onClick={handleShare} aria-label="Share">
-            <Share2 size={16} color="#9C9990" />
-          </button>
-          {likedBy.length > 0 && (
-            <button style={{ ...styles.postViewerPill, marginLeft: "auto" }} onClick={() => onOpenLikers(p.id)} aria-label="See who gave a golf clap">
-              <div style={styles.likersStack}>
-                {likedBy.slice(0, 3).map((name, i) => (
-                  <Avatar
-                    key={name}
-                    photo={profiles?.[name]?.photo}
-                    name={name}
-                    style={{ ...styles.likersAvatar, width: 18, height: 18, fontSize: 7.5, marginLeft: i === 0 ? 0 : -6, zIndex: 3 - i }}
-                  />
-                ))}
-              </div>
-            </button>
-          )}
+      <div style={styles.postViewerScroll}>
+        <div style={styles.postViewerMediaWrap}>
+          <PostMedia post={p} large />
         </div>
 
-        <button style={styles.postViewerReplyBar} onClick={() => onOpenComments(p.id)}>
-          Add a comment…
-        </button>
+        <div style={styles.postViewerBody}>
+          <button style={styles.postViewerAuthorRow} onClick={() => onOpenProfile(p.author)}>
+            <Avatar photo={authorPhoto} name={p.author} style={{ ...styles.postAvatar, width: 40, height: 40 }} />
+            <div style={{ textAlign: "left" }}>
+              <div style={{ ...styles.cardName, color: "#FFFFFF" }}>{p.author}</div>
+              <div style={styles.cardMeta}>
+                {p.kind === "round" ? (
+                  <>
+                    <MapPin size={12} color="#9C9990" /> {p.round.course} · {timeAgo(p.time)}
+                  </>
+                ) : (
+                  <>{timeAgo(p.time)}</>
+                )}
+              </div>
+            </div>
+          </button>
+
+          {p.text && <div style={{ ...styles.noteText, color: "#FFFFFF", padding: "0 16px", marginTop: 10 }}>{p.text}</div>}
+
+          <div style={styles.postViewerDivider} />
+
+          <div style={styles.postViewerActionRow}>
+            <button style={styles.postViewerAction} onClick={() => onLike(p.id)} aria-label="Golf clap">
+              <span style={{ fontSize: 19, lineHeight: 1, ...golfClapIconStyle(iLiked) }}>👏</span>
+              {likedBy.length > 0 && <span>{likedBy.length}</span>}
+            </button>
+            <button style={styles.postViewerAction} onClick={() => onOpenComments(p.id)} aria-label="Comment">
+              <MessageCircle size={19} color="#9C9990" />
+              {p.comments.length > 0 && <span>{p.comments.length}</span>}
+            </button>
+            <button style={styles.postViewerAction} onClick={handleShare} aria-label="Share">
+              <Share2 size={17} color="#9C9990" />
+            </button>
+            {likedBy.length > 0 && (
+              <button style={{ ...styles.postViewerAction, marginLeft: "auto" }} onClick={() => onOpenLikers(p.id)} aria-label="See who gave a golf clap">
+                <div style={styles.likersStack}>
+                  {likedBy.slice(0, 3).map((name, i) => (
+                    <Avatar
+                      key={name}
+                      photo={profiles?.[name]?.photo}
+                      name={name}
+                      style={{ ...styles.likersAvatar, width: 18, height: 18, fontSize: 7.5, marginLeft: i === 0 ? 0 : -6, zIndex: 3 - i }}
+                    />
+                  ))}
+                </div>
+              </button>
+            )}
+          </div>
+
+          <div style={styles.postViewerDivider} />
+
+          <button style={styles.postViewerReplyBar} onClick={() => onOpenComments(p.id)}>
+            Add a comment…
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -3356,16 +3364,17 @@ const styles = {
   ghinModalCopy: { fontSize: 13, color: "#A3A199", lineHeight: 1.5, marginBottom: 14 },
   settingsRow: { width: "100%", background: "#232220", border: "1.5px solid #74C69D", borderRadius: 10, padding: "13px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", color: "#FFFFFF", fontSize: 13.5, marginBottom: 8 },
   modalOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", zIndex: 10, animation: "overlayIn 200ms cubic-bezier(0.23, 1, 0.32, 1) both" },
-  postViewerOverlay: { position: "fixed", inset: 0, background: "#000000", zIndex: 20, overflow: "hidden", fontFamily: "'Baloo 2', sans-serif" },
-  postViewerMediaWrap: { position: "absolute", inset: 0, display: "flex", flexDirection: "column" },
-  postViewerTop: { position: "absolute", top: 0, left: 0, right: 0, zIndex: 2, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 12px" },
-  postViewerIconBtn: { background: "rgba(0,0,0,0.45)", border: "none", borderRadius: "50%", width: 38, height: 38, display: "flex", alignItems: "center", justifyContent: "center" },
-  postViewerBottom: { position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 2, padding: "12px 16px 18px", display: "flex", flexDirection: "column", gap: 10 },
-  postViewerAuthorChip: { display: "inline-flex", alignSelf: "flex-start", alignItems: "center", gap: 10, background: "rgba(0,0,0,0.45)", borderRadius: 999, padding: "6px 14px 6px 6px" },
-  postViewerCaptionChip: { alignSelf: "flex-start", background: "rgba(0,0,0,0.45)", borderRadius: 14, padding: "8px 14px" },
-  postViewerPillRow: { display: "flex", alignItems: "center", gap: 8 },
-  postViewerPill: { display: "flex", alignItems: "center", gap: 6, background: "rgba(0,0,0,0.45)", border: "none", borderRadius: 999, padding: "8px 14px", color: "#9C9990", fontSize: 13, fontWeight: 600 },
-  postViewerReplyBar: { display: "block", width: "100%", textAlign: "left", background: "rgba(0,0,0,0.45)", border: "none", borderRadius: 999, padding: "12px 16px", color: "#9C9990", fontSize: 14 },
+  postViewerOverlay: { position: "fixed", inset: 0, background: "#000000", zIndex: 20, display: "flex", flexDirection: "column", fontFamily: "'Baloo 2', sans-serif" },
+  postViewerScroll: { flex: 1, minHeight: 0, overflowY: "auto" },
+  postViewerMediaWrap: { display: "flex", flexDirection: "column" },
+  postViewerTop: { flexShrink: 0, position: "sticky", top: 0, zIndex: 2, background: "#000000", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px" },
+  postViewerIconBtn: { background: "none", border: "none", borderRadius: "50%", width: 38, height: 38, display: "flex", alignItems: "center", justifyContent: "center" },
+  postViewerBody: { padding: "12px 0 18px" },
+  postViewerAuthorRow: { display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", padding: "0 16px", textAlign: "left" },
+  postViewerDivider: { height: 1, background: "rgba(255,255,255,0.12)", margin: "14px 0" },
+  postViewerActionRow: { display: "flex", alignItems: "center", gap: 22, padding: "0 16px" },
+  postViewerAction: { display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", padding: 0, color: "#9C9990", fontSize: 14, fontWeight: 600 },
+  postViewerReplyBar: { display: "block", width: "calc(100% - 32px)", margin: "0 16px", textAlign: "left", background: "#1C1B19", border: "none", borderRadius: 999, padding: "12px 16px", color: "#9C9990", fontSize: 14 },
   modal: { background: "#232220", width: "100%", maxWidth: 420, margin: "0 auto", borderRadius: "18px 18px 0 0", padding: 20, border: "1.5px solid #74C69D", borderBottom: "none", animation: "sheetIn 250ms cubic-bezier(0.32, 0.72, 0, 1) both" },
   modalHead: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
   modalTitle: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 19 },
