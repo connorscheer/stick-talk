@@ -1197,14 +1197,17 @@ function PostMedia({ post: p, large, onOpen }) {
   // In the fullscreen viewer the media should stretch to fill the space its
   // flex parent gives it, rather than sizing to its own content.
   const wrapStyle = large ? { flex: 1, minHeight: 0, display: "flex", flexDirection: "column", margin: 0 } : undefined;
-  // A photo box always matches the scorecard's actual measured height when
-  // this post has one, so the two are always exactly the same size — with
-  // no scorecard to match (a photo-only post), fall back to a normal aspect
-  // ratio instead. Falling back to "auto" height before the measurement
-  // arrives would let the <img> size itself to its own natural aspect
-  // ratio (often much taller or shorter than the scorecard), so a bounded
-  // 4:3 guess is used until the real measurement lands, never "auto".
-  const photoBoxStyle = large ? {} : hasScorecard ? (scorecardHeight ? { height: scorecardHeight } : { aspectRatio: "4 / 3" }) : { aspectRatio: "4 / 3" };
+  // Both the scorecard's own box and any photo boxes in the same post get
+  // this exact same explicit height (not "auto" for one and a number for
+  // the other) — relying on flexbox cross-axis stretch to equalize an
+  // "auto" box against a fixed-height box left a small residual mismatch,
+  // since stretch only guarantees the *outer* flex item matches, not the
+  // inner content box. Forcing the identical number on both removes any
+  // ambiguity. Falls back to a 4:3-ish guess until the scorecard is
+  // measured, and to a plain 4:3 box when there's no scorecard at all.
+  const boxHeight = hasScorecard ? scorecardHeight || 420 : null;
+  const scorecardBoxStyle = large ? {} : { height: boxHeight, overflow: "hidden" };
+  const photoBoxStyle = large ? {} : hasScorecard ? { height: boxHeight } : { aspectRatio: "4 / 3" };
 
   function Item({ children, style: styleOverride }) {
     const finalStyle = large ? boxStyle : { ...boxStyle, ...styleOverride };
@@ -1228,7 +1231,7 @@ function PostMedia({ post: p, large, onOpen }) {
     if (hasScorecard) {
       return (
         <div style={{ ...styles.postScorecardWrap, ...wrapStyle }}>
-          <Item>
+          <Item style={scorecardBoxStyle}>
             <div ref={scorecardRef}>
               <Scorecard round={p.round} />
             </div>
@@ -3197,7 +3200,7 @@ const styles = {
   switchThumb: { width: 18, height: 18, borderRadius: "50%", background: "#EDE6D6", transition: "transform 0.15s ease" },
   postImageWrap: { marginTop: 10 },
   postScorecardWrap: {},
-  postMediaScroll: { display: "flex", gap: 10, overflowX: "auto", overflowY: "hidden", touchAction: "pan-x", overscrollBehaviorY: "contain", scrollSnapType: "x mandatory", scrollbarWidth: "none", msOverflowStyle: "none", marginTop: 10 },
+  postMediaScroll: { display: "flex", alignItems: "flex-start", gap: 10, overflowX: "auto", overflowY: "hidden", touchAction: "pan-x", overscrollBehaviorY: "contain", scrollSnapType: "x mandatory", scrollbarWidth: "none", msOverflowStyle: "none", marginTop: 10 },
   postMediaScrollItem: { flex: "0 0 100%", scrollSnapAlign: "start" },
   postMediaDots: { display: "flex", justifyContent: "center", gap: 6, marginTop: 8 },
   postMediaDot: { width: 6, height: 6, borderRadius: "50%" },
