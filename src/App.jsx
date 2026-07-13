@@ -388,20 +388,7 @@ function BrandMark({ size = 24, poleColor = "#000000" }) {
 }
 
 function StickTalkWordmark() {
-  return (
-    <div style={styles.stickTalkBadge}>
-      <span style={styles.stickTalkBadgeText}>
-        STICK
-        <br />
-        TALK
-      </span>
-      <svg width="13" height="20" viewBox="0 0 13 20" fill="none" style={{ marginLeft: 3, flexShrink: 0 }}>
-        <path d="M3 3 L11 1" stroke="#000000" strokeWidth="2" strokeLinecap="round" />
-        <path d="M3 10 L12 9" stroke="#000000" strokeWidth="2" strokeLinecap="round" />
-        <path d="M3 17 L10 17" stroke="#000000" strokeWidth="2" strokeLinecap="round" />
-      </svg>
-    </div>
-  );
+  return <img src="/stick-talk-wordmark.png" alt="Stick Talk" style={styles.stickTalkBadge} />;
 }
 
 function AuthGate() {
@@ -3214,8 +3201,7 @@ const styles = {
   chartCard: { background: "#232220", border: "1.5px solid #74C69D", borderRadius: 14, padding: "12px 8px", marginBottom: 14 },
   chartTitle: { fontSize: 12.5, color: "#9C9990", marginBottom: 4, paddingLeft: 8 },
   sectionLabel: { fontSize: 12.5, color: "#9C9990", fontWeight: 600, margin: "4px 0 8px", textTransform: "uppercase", letterSpacing: 0.6 },
-  stickTalkBadge: { display: "inline-flex", alignItems: "center", background: "#F5EFDD", border: "2px solid #000000", borderRadius: 12, padding: "5px 10px 5px 12px" },
-  stickTalkBadgeText: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 12, lineHeight: 1.05, letterSpacing: 0.3, color: "#000000", textAlign: "left" },
+  stickTalkBadge: { height: 34, width: "auto", display: "block" },
   filterCard: { background: "#232220", border: "1.5px solid #74C69D", borderRadius: 14, padding: 14, marginBottom: 14 },
   filterHead: { display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: "#74C69D", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.6 },
   filterLabel: { display: "block", fontSize: 12.5, color: "#FFFFFF", marginBottom: 10 },
