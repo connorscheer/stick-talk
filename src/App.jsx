@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, useLayoutEffect } from "react";
 import { Flag, TrendingUp, TrendingDown, Minus, Users, User, MessageCircle, Plus, MapPin, X, SlidersHorizontal, Award, ChevronRight, ChevronLeft, Landmark, Navigation, Check, Image as ImageIcon, Camera, Send, MoreHorizontal, Trash2, Search, Bell, Share2 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { supabase } from "./supabaseClient";
@@ -638,10 +638,15 @@ export default function App() {
     };
     setRounds((prev) => [...prev, r]);
     if (meta?.shareToFeed) {
-      // Backdated rounds should show up at the right spot in the feed
-      // (and read as "3d" instead of "0h"), so anchor the post's timestamp
-      // to the played date rather than always using right-now.
-      const postTime = meta?.datePlayed ? new Date(meta.datePlayed + "T12:00:00").toISOString() : new Date().toISOString();
+      // Backdated rounds should show up at the right spot in the feed (and
+      // read as "3d" instead of "0h"), so anchor the post's timestamp to the
+      // played date rather than always using right-now — but only when the
+      // round was actually played on an earlier day. Forcing today's rounds
+      // to noon regardless of when they're actually posted would sort them
+      // below any post made later in the same day, even though this one is
+      // the newest.
+      const isToday = !meta?.datePlayed || meta.datePlayed === new Date().toISOString().slice(0, 10);
+      const postTime = isToday ? new Date().toISOString() : new Date(meta.datePlayed + "T12:00:00").toISOString();
       updatePosts((prev) => [
         {
           id: "round-" + id,
@@ -1138,6 +1143,40 @@ function MatchConfirmedTile({ post }) {
   );
 }
 
+// Scales its content down (never up) to fit exactly inside its box, with no
+// scrolling — used for the scorecard in the feed, whose natural height
+// rarely matches the fixed 4:3 box a photo would fill, so without this it
+// either overflows (scrollable) or gets clipped.
+function FitBox({ children }) {
+  const outerRef = useRef(null);
+  const innerRef = useRef(null);
+  const [scale, setScale] = useState(1);
+
+  useLayoutEffect(() => {
+    const outer = outerRef.current;
+    const inner = innerRef.current;
+    if (!outer || !inner) return;
+    function recompute() {
+      const sx = outer.clientWidth / inner.scrollWidth;
+      const sy = outer.clientHeight / inner.scrollHeight;
+      setScale(Math.min(sx, sy, 1));
+    }
+    recompute();
+    const ro = new ResizeObserver(recompute);
+    ro.observe(outer);
+    ro.observe(inner);
+    return () => ro.disconnect();
+  }, [children]);
+
+  return (
+    <div ref={outerRef} style={{ width: "100%", height: "100%", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div ref={innerRef} style={{ transform: `scale(${scale})`, transformOrigin: "center center" }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 // A round's scorecard plus any photos, as one swipeable strip when there's
 // more than one item — dot indicators replace the native scrollbar, and
 // scrolling is locked to horizontal so a vertical swipe on mobile scrolls the
@@ -1174,7 +1213,7 @@ function PostMedia({ post: p, large, onOpen }) {
   // pannable by drag/scroll once the content is bigger than the box.
   const boxStyle = large
     ? { width: "100%", height: "100%", overflow: "auto", scrollbarWidth: "none", msOverflowStyle: "none", cursor: zoom === ZOOM_STEPS[ZOOM_STEPS.length - 1] ? "zoom-out" : "zoom-in" }
-    : { width: "100%", aspectRatio: "4 / 3", overflowY: "auto", scrollbarWidth: "none", msOverflowStyle: "none" };
+    : { width: "100%", aspectRatio: "4 / 3", overflow: "hidden" };
   // In the fullscreen viewer the media should stretch to fill the space its
   // flex parent gives it, rather than sizing to its own content.
   const wrapStyle = large ? { flex: 1, minHeight: 0, display: "flex", flexDirection: "column" } : undefined;
@@ -1201,7 +1240,7 @@ function PostMedia({ post: p, large, onOpen }) {
       return (
         <div style={{ ...styles.postScorecardWrap, ...wrapStyle }}>
           <Item>
-            <Scorecard round={p.round} />
+            {large ? <Scorecard round={p.round} /> : <FitBox><Scorecard round={p.round} /></FitBox>}
           </Item>
         </div>
       );
@@ -1228,7 +1267,7 @@ function PostMedia({ post: p, large, onOpen }) {
         {hasScorecard && (
           <div style={{ ...styles.postMediaScrollItem, ...(large ? { height: "100%" } : {}) }}>
             <Item>
-              <Scorecard round={p.round} />
+              {large ? <Scorecard round={p.round} /> : <FitBox><Scorecard round={p.round} /></FitBox>}
             </Item>
           </div>
         )}
@@ -1342,7 +1381,7 @@ function PostCard({ post: p, onLike, onOpenComments, onOpenLikers, onDelete, myN
             style={{
               fontSize: 21,
               lineHeight: 1,
-              filter: iLiked ? "none" : "grayscale(1) opacity(0.55)",
+              filter: iLiked ? "grayscale(1) sepia(1) hue-rotate(110deg) saturate(2.2) brightness(1.05)" : "grayscale(1) opacity(0.55)",
               transform: iLiked ? "scale(1.08)" : "scale(1)",
               transition: "transform 0.12s ease",
             }}
@@ -1463,7 +1502,7 @@ function PostViewerModal({ post: p, onClose, onLike, onOpenComments, onOpenLiker
               style={{
                 fontSize: 17,
                 lineHeight: 1,
-                filter: iLiked ? "none" : "grayscale(1) opacity(0.55)",
+                filter: iLiked ? "grayscale(1) sepia(1) hue-rotate(110deg) saturate(2.2) brightness(1.05)" : "grayscale(1) opacity(0.55)",
                 transform: iLiked ? "scale(1.08)" : "scale(1)",
                 transition: "transform 0.12s ease",
               }}
