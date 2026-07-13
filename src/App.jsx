@@ -97,6 +97,17 @@ function initialsOf(name) {
   );
 }
 
+// Shared golf-clap emoji style (feed card + fullscreen viewer both use this
+// same liked/unliked look) — filter tints it mint-green when liked, and the
+// scale pop is the tap feedback.
+function golfClapIconStyle(liked) {
+  return {
+    filter: liked ? "grayscale(1) sepia(1) hue-rotate(110deg) saturate(2.2) brightness(1.05)" : "grayscale(1) opacity(0.55)",
+    transform: liked ? "scale(1.08)" : "scale(1)",
+    transition: "transform 120ms cubic-bezier(0.23, 1, 0.32, 1)",
+  };
+}
+
 // Deterministic placeholder avatar color per name, so a stack of avatars
 // reads as distinct people rather than identical gray circles.
 const AVATAR_COLORS = ["#74C69D", "#F4A261", "#E76F51", "#4CC9F0", "#B5838D", "#FFD166", "#6A994E", "#9B5DE5"];
@@ -418,6 +429,17 @@ function AuthGate() {
         * { box-sizing: border-box; }
         button { font-family: inherit; cursor: pointer; }
         input { font-family: inherit; }
+        button:not(:disabled):active {
+          transform: scale(0.97);
+          transition: transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+          }
+        }
       `}</style>
       <div style={styles.nameGateFlag}>
         <BrandMark size={26} />
@@ -471,6 +493,17 @@ function NameGate({ onSubmit }) {
         * { box-sizing: border-box; }
         button { font-family: inherit; cursor: pointer; }
         input { font-family: inherit; }
+        button:not(:disabled):active {
+          transform: scale(0.97);
+          transition: transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+          }
+        }
       `}</style>
       <div style={styles.nameGateFlag}>
         <BrandMark size={26} />
@@ -946,6 +979,20 @@ export default function App() {
           -moz-appearance: textfield;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes sheetIn { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes menuIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        button:not(:disabled):active {
+          transform: scale(0.97);
+          transition: transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+          }
+        }
       `}</style>
 
       <header style={styles.header}>
@@ -1343,7 +1390,7 @@ function PostMedia({ post: p, large, onOpen }) {
     }
     return (
       <div style={boxStyle} onClick={cycleZoom}>
-        <div style={{ width: "100%", height: "100%", transform: `scale(${zoom})`, transformOrigin: "center center", transition: "transform 0.2s ease" }}>
+        <div style={{ width: "100%", height: "100%", transform: `scale(${zoom})`, transformOrigin: "center center", transition: "transform 0.2s cubic-bezier(0.77, 0, 0.175, 1)" }}>
           {children}
         </div>
       </div>
@@ -1493,13 +1540,7 @@ function PostCard({ post: p, onLike, onOpenComments, onOpenLikers, onDelete, myN
       <div style={styles.cardActions}>
         <button style={styles.actionBtnFull} onClick={() => onLike(p.id)} aria-label="Golf clap">
           <span
-            style={{
-              fontSize: 21,
-              lineHeight: 1,
-              filter: iLiked ? "grayscale(1) sepia(1) hue-rotate(110deg) saturate(2.2) brightness(1.05)" : "grayscale(1) opacity(0.55)",
-              transform: iLiked ? "scale(1.08)" : "scale(1)",
-              transition: "transform 0.12s ease",
-            }}
+            style={{ fontSize: 21, lineHeight: 1, ...golfClapIconStyle(iLiked) }}
           >
             👏
           </span>
@@ -1614,13 +1655,7 @@ function PostViewerModal({ post: p, onClose, onLike, onOpenComments, onOpenLiker
         <div style={styles.postViewerPillRow}>
           <button style={styles.postViewerPill} onClick={() => onLike(p.id)} aria-label="Golf clap">
             <span
-              style={{
-                fontSize: 17,
-                lineHeight: 1,
-                filter: iLiked ? "grayscale(1) sepia(1) hue-rotate(110deg) saturate(2.2) brightness(1.05)" : "grayscale(1) opacity(0.55)",
-                transform: iLiked ? "scale(1.08)" : "scale(1)",
-                transition: "transform 0.12s ease",
-              }}
+              style={{ fontSize: 17, lineHeight: 1, ...golfClapIconStyle(iLiked) }}
             >
               👏
             </span>
@@ -3148,7 +3183,7 @@ const styles = {
   likersCountText: { fontSize: 13, color: "#9C9990" },
   kebabBtn: { background: "none", border: "none", padding: 4, display: "flex" },
   menuBackdrop: { position: "fixed", inset: 0, background: "transparent", border: "none", zIndex: 5 },
-  postMenu: { position: "absolute", top: "calc(100% + 4px)", right: 0, background: "#3A3936", border: "1.5px solid #74C69D", borderRadius: 10, overflow: "hidden", zIndex: 6, boxShadow: "0 8px 20px rgba(0,0,0,0.35)", minWidth: 150 },
+  postMenu: { position: "absolute", top: "calc(100% + 4px)", right: 0, background: "#3A3936", border: "1.5px solid #74C69D", borderRadius: 10, overflow: "hidden", zIndex: 6, boxShadow: "0 8px 20px rgba(0,0,0,0.35)", minWidth: 150, transformOrigin: "top right", animation: "menuIn 180ms cubic-bezier(0.23, 1, 0.32, 1) both" },
   postMenuDeleteItem: { width: "100%", background: "transparent", border: "none", padding: "10px 12px", display: "flex", alignItems: "center", gap: 8, color: "#C1443A", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" },
   statRow: { display: "flex", gap: 10, marginBottom: 14 },
   statBox: { flex: 1, background: "#232220", border: "1px solid", borderRadius: 12, padding: "10px 6px", textAlign: "center" },
@@ -3213,7 +3248,7 @@ const styles = {
   connectedChip: { background: "rgba(116,198,157,0.15)", color: "#74C69D", fontSize: 11, fontWeight: 700, borderRadius: 7, padding: "5px 10px", border: "1.5px solid #74C69D" },
   ghinModalCopy: { fontSize: 13, color: "#A3A199", lineHeight: 1.5, marginBottom: 14 },
   settingsRow: { width: "100%", background: "#232220", border: "1.5px solid #74C69D", borderRadius: 10, padding: "13px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", color: "#FFFFFF", fontSize: 13.5, marginBottom: 8 },
-  modalOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", zIndex: 10 },
+  modalOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", zIndex: 10, animation: "overlayIn 200ms cubic-bezier(0.23, 1, 0.32, 1) both" },
   postViewerOverlay: { position: "fixed", inset: 0, background: "#000000", zIndex: 20, overflow: "hidden", fontFamily: "'Baloo 2', sans-serif" },
   postViewerMediaWrap: { position: "absolute", inset: 0, display: "flex", flexDirection: "column" },
   postViewerTop: { position: "absolute", top: 0, left: 0, right: 0, zIndex: 2, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 12px" },
@@ -3224,7 +3259,7 @@ const styles = {
   postViewerPillRow: { display: "flex", alignItems: "center", gap: 8 },
   postViewerPill: { display: "flex", alignItems: "center", gap: 6, background: "rgba(0,0,0,0.45)", border: "none", borderRadius: 999, padding: "8px 14px", color: "#9C9990", fontSize: 13, fontWeight: 600 },
   postViewerReplyBar: { display: "block", width: "100%", textAlign: "left", background: "rgba(0,0,0,0.45)", border: "none", borderRadius: 999, padding: "12px 16px", color: "#9C9990", fontSize: 14 },
-  modal: { background: "#232220", width: "100%", maxWidth: 420, margin: "0 auto", borderRadius: "18px 18px 0 0", padding: 20, border: "1.5px solid #74C69D", borderBottom: "none" },
+  modal: { background: "#232220", width: "100%", maxWidth: 420, margin: "0 auto", borderRadius: "18px 18px 0 0", padding: 20, border: "1.5px solid #74C69D", borderBottom: "none", animation: "sheetIn 250ms cubic-bezier(0.32, 0.72, 0, 1) both" },
   modalHead: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
   modalTitle: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 19 },
   iconBtn: { background: "none", border: "none" },
@@ -3326,7 +3361,7 @@ const styles = {
   shareRow: { display: "flex", justifyContent: "space-between", alignItems: "center", background: "#171513", border: "1.5px solid #74C69D", borderRadius: 10, padding: "11px 13px", marginBottom: 14 },
   shareRowTitle: { fontSize: 13.5, fontWeight: 600, color: "#FFFFFF" },
   shareRowSub: { fontSize: 11.5, color: "#9C9990", marginTop: 2 },
-  switchTrack: { width: 40, height: 22, borderRadius: 11, background: "#4A4844", border: "none", padding: 2, display: "flex", alignItems: "center", flexShrink: 0 },
+  switchTrack: { width: 40, height: 22, borderRadius: 11, background: "#4A4844", border: "none", padding: 2, display: "flex", alignItems: "center", flexShrink: 0, transition: "background 150ms cubic-bezier(0.23, 1, 0.32, 1)" },
   switchTrackOn: { background: "#74C69D" },
   switchThumb: { width: 18, height: 18, borderRadius: "50%", background: "#EDE6D6", transition: "transform 0.15s ease" },
   postImageWrap: { marginTop: 10 },
