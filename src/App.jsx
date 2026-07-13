@@ -1141,31 +1141,56 @@ function MatchConfirmedTile({ post }) {
 // more than one item — dot indicators replace the native scrollbar, and
 // scrolling is locked to horizontal so a vertical swipe on mobile scrolls the
 // feed instead of fighting with the carousel.
+const ZOOM_STEPS = [1, 1.8, 2.6];
+
 function PostMedia({ post: p, large, onOpen }) {
   const [active, setActive] = useState(0);
+  const [zoom, setZoom] = useState(1);
   const scrollRef = useRef(null);
   const images = p.images || [];
   const hasScorecard = p.kind === "round";
   const itemCount = (hasScorecard ? 1 : 0) + images.length;
   const photoAlt = p.kind === "round" ? `${p.author}'s round at ${p.round.course}` : `Photo shared by ${p.author}`;
 
+  // Zoom is local to whichever item is currently on screen — reset it
+  // whenever the user swipes to a different photo/scorecard.
+  useEffect(() => {
+    setZoom(1);
+  }, [active]);
+
   if (itemCount === 0) return null;
+
+  function cycleZoom() {
+    setZoom((z) => ZOOM_STEPS[(ZOOM_STEPS.indexOf(z) + 1) % ZOOM_STEPS.length]);
+  }
 
   // A scorecard's natural height rarely matches a photo's 4:3 aspect ratio,
   // so every item (scorecard or photo, whether it's the only item or one of
   // several in the carousel) gets boxed into the same size — the scorecard
-  // scrolls internally if its content is taller than the box.
+  // scrolls internally if its content is taller than the box. In the
+  // fullscreen viewer, tapping cycles through zoom levels instead of
+  // opening anything further, and CSS transforms make an overflow:auto box
+  // pannable by drag/scroll once the content is bigger than the box.
   const boxStyle = large
-    ? { width: "100%", height: "100%", overflowY: "auto", scrollbarWidth: "none", msOverflowStyle: "none" }
+    ? { width: "100%", height: "100%", overflow: "auto", scrollbarWidth: "none", msOverflowStyle: "none", cursor: zoom === ZOOM_STEPS[ZOOM_STEPS.length - 1] ? "zoom-out" : "zoom-in" }
     : { width: "100%", aspectRatio: "4 / 3", overflowY: "auto", scrollbarWidth: "none", msOverflowStyle: "none" };
   // In the fullscreen viewer the media should stretch to fill the space its
   // flex parent gives it, rather than sizing to its own content.
   const wrapStyle = large ? { flex: 1, minHeight: 0, display: "flex", flexDirection: "column" } : undefined;
 
-  function Item({ children, onClick }) {
+  function Item({ children }) {
+    if (!large) {
+      return (
+        <div style={boxStyle} onClick={onOpen}>
+          {children}
+        </div>
+      );
+    }
     return (
-      <div style={boxStyle} onClick={onClick}>
-        {children}
+      <div style={boxStyle} onClick={cycleZoom}>
+        <div style={{ width: "100%", height: "100%", transform: `scale(${zoom})`, transformOrigin: "center center", transition: "transform 0.2s ease" }}>
+          {children}
+        </div>
       </div>
     );
   }
@@ -1174,7 +1199,7 @@ function PostMedia({ post: p, large, onOpen }) {
     if (hasScorecard) {
       return (
         <div style={{ ...styles.postScorecardWrap, ...wrapStyle }}>
-          <Item onClick={onOpen}>
+          <Item>
             <Scorecard round={p.round} />
           </Item>
         </div>
@@ -1182,7 +1207,7 @@ function PostMedia({ post: p, large, onOpen }) {
     }
     return (
       <div style={{ ...styles.postImageWrap, ...wrapStyle }}>
-        <Item onClick={onOpen}>
+        <Item>
           <PhotoTile src={images[0]} style={{ width: "100%", height: "100%", objectFit: large ? "contain" : "cover", borderRadius: 18, border: "1.5px solid #74C69D" }} alt={photoAlt} />
         </Item>
       </div>
@@ -1201,14 +1226,14 @@ function PostMedia({ post: p, large, onOpen }) {
       <div ref={scrollRef} style={{ ...styles.postMediaScroll, ...(large ? { flex: 1, minHeight: 0 } : {}) }} onScroll={handleScroll}>
         {hasScorecard && (
           <div style={{ ...styles.postMediaScrollItem, ...(large ? { height: "100%" } : {}) }}>
-            <Item onClick={onOpen}>
+            <Item>
               <Scorecard round={p.round} />
             </Item>
           </div>
         )}
         {images.map((src, i) => (
           <div key={i} style={{ ...styles.postMediaScrollItem, ...(large ? { height: "100%" } : {}) }}>
-            <Item onClick={onOpen}>
+            <Item>
               <PhotoTile src={src} style={{ width: "100%", height: "100%", objectFit: large ? "contain" : "cover", borderRadius: 18, border: "1.5px solid #74C69D" }} alt={`${photoAlt} (${i + 1}/${images.length})`} />
             </Item>
           </div>
@@ -2996,10 +3021,10 @@ const styles = {
   ghinModalCopy: { fontSize: 13, color: "#A3A199", lineHeight: 1.5, marginBottom: 14 },
   settingsRow: { width: "100%", background: "#232220", border: "1.5px solid #74C69D", borderRadius: 10, padding: "13px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", color: "#FFFFFF", fontSize: 13.5, marginBottom: 8 },
   modalOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", zIndex: 10 },
-  postViewerOverlay: { position: "fixed", inset: 0, background: "#000000", zIndex: 20, maxWidth: 420, margin: "0 auto", display: "flex", flexDirection: "column", fontFamily: "'Baloo 2', sans-serif" },
-  postViewerTop: { display: "flex", alignItems: "center", gap: 12, padding: "16px 16px 10px", borderBottom: "1.5px solid #74C69D" },
-  postViewerMediaWrap: { flex: 1, minHeight: 0, padding: "12px 16px", display: "flex" },
-  postViewerBottom: { padding: "10px 16px 18px", borderTop: "1.5px solid #74C69D" },
+  postViewerOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.92)", backdropFilter: "blur(26px)", WebkitBackdropFilter: "blur(26px)", zIndex: 20, display: "flex", flexDirection: "column", fontFamily: "'Baloo 2', sans-serif" },
+  postViewerTop: { position: "absolute", top: 0, left: 0, right: 0, zIndex: 2, display: "flex", alignItems: "center", gap: 12, padding: "18px 16px 46px", background: "linear-gradient(rgba(0,0,0,0.65), transparent)" },
+  postViewerMediaWrap: { flex: 1, minHeight: 0, display: "flex" },
+  postViewerBottom: { position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 2, padding: "46px 16px 18px", background: "linear-gradient(transparent, rgba(0,0,0,0.85))" },
   modal: { background: "#232220", width: "100%", maxWidth: 420, margin: "0 auto", borderRadius: "18px 18px 0 0", padding: 20, border: "1.5px solid #74C69D", borderBottom: "none" },
   modalHead: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
   modalTitle: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 19 },
