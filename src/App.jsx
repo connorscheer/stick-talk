@@ -342,7 +342,7 @@ const PHOTO_PLACEHOLDERS = {
 function PhotoTile({ src, style, alt = "Shared golf photo" }) {
   // src is either a real image (object URL / data URL) or a "photo:xxx" placeholder key
   if (src && !src.startsWith("photo:")) {
-    return <img src={src} alt={alt} style={{ ...style, objectFit: "cover" }} />;
+    return <img src={src} alt={alt} style={{ objectFit: "cover", ...style }} />;
   }
   const p = PHOTO_PLACEHOLDERS[src] || PHOTO_PLACEHOLDERS["photo:fairway"];
   return (
@@ -419,6 +419,7 @@ export default function App() {
   const [showComposer, setShowComposer] = useState(false);
   const [commentsFor, setCommentsFor] = useState(null); // postId
   const [likersFor, setLikersFor] = useState(null); // postId
+  const [viewingPost, setViewingPost] = useState(null); // postId
   const [homeCourse, setHomeCourse] = useState("");
   const [myPhoto, setMyPhoto] = useState(null);
   const [profiles, setProfiles] = useState({}); // { [name]: {initials, homeCourse, handicap, avgScore, bestRound, roundsCount, photo} }
@@ -850,6 +851,7 @@ export default function App() {
             onOpenComposer={() => setShowComposer(true)}
             onOpenComments={(postId) => setCommentsFor(postId)}
             onOpenLikers={(postId) => setLikersFor(postId)}
+            onOpenPost={(postId) => setViewingPost(postId)}
             onOpenProfile={openProfile}
             rounds={rounds}
             onPostScore={() => setShowLogForm(true)}
@@ -949,6 +951,28 @@ export default function App() {
         />
       )}
 
+      {viewingPost && (
+        <PostViewerModal
+          post={posts.find((p) => p.id === viewingPost)}
+          onClose={() => setViewingPost(null)}
+          onLike={toggleLike}
+          onOpenComments={(postId) => {
+            setViewingPost(null);
+            setCommentsFor(postId);
+          }}
+          onOpenLikers={(postId) => {
+            setViewingPost(null);
+            setLikersFor(postId);
+          }}
+          onOpenProfile={(name) => {
+            setViewingPost(null);
+            openProfile(name);
+          }}
+          myName={myName}
+          profiles={profiles}
+        />
+      )}
+
       {viewingProfile && (
         <ProfileViewModal
           name={viewingProfile}
@@ -994,6 +1018,7 @@ function HomeTab({
   onOpenComments,
   onOpenLikers,
   onOpenProfile,
+  onOpenPost,
   rounds,
   onPostScore,
   profiles,
@@ -1024,7 +1049,7 @@ function HomeTab({
         p.kind === "match" ? (
           <MatchConfirmedTile key={p.id} post={p} />
         ) : (
-          <PostCard key={p.id} post={p} onLike={onLike} onOpenComments={onOpenComments} onOpenLikers={onOpenLikers} onDelete={onDelete} myName={myName} onOpenProfile={onOpenProfile} authorPhoto={profiles?.[p.author]?.photo} profiles={profiles} />
+          <PostCard key={p.id} post={p} onLike={onLike} onOpenComments={onOpenComments} onOpenLikers={onOpenLikers} onDelete={onDelete} myName={myName} onOpenProfile={onOpenProfile} authorPhoto={profiles?.[p.author]?.photo} profiles={profiles} onOpenPost={onOpenPost} />
         )
       )}
     </div>
@@ -1116,7 +1141,7 @@ function MatchConfirmedTile({ post }) {
 // more than one item — dot indicators replace the native scrollbar, and
 // scrolling is locked to horizontal so a vertical swipe on mobile scrolls the
 // feed instead of fighting with the carousel.
-function PostMedia({ post: p }) {
+function PostMedia({ post: p, large, onOpen }) {
   const [active, setActive] = useState(0);
   const scrollRef = useRef(null);
   const images = p.images || [];
@@ -1126,17 +1151,40 @@ function PostMedia({ post: p }) {
 
   if (itemCount === 0) return null;
 
+  // A scorecard's natural height rarely matches a photo's 4:3 aspect ratio,
+  // so every item (scorecard or photo, whether it's the only item or one of
+  // several in the carousel) gets boxed into the same size — the scorecard
+  // scrolls internally if its content is taller than the box.
+  const boxStyle = large
+    ? { width: "100%", height: "100%", overflowY: "auto", scrollbarWidth: "none", msOverflowStyle: "none" }
+    : { width: "100%", aspectRatio: "4 / 3", overflowY: "auto", scrollbarWidth: "none", msOverflowStyle: "none" };
+  // In the fullscreen viewer the media should stretch to fill the space its
+  // flex parent gives it, rather than sizing to its own content.
+  const wrapStyle = large ? { flex: 1, minHeight: 0, display: "flex", flexDirection: "column" } : undefined;
+
+  function Item({ children, onClick }) {
+    return (
+      <div style={boxStyle} onClick={onClick}>
+        {children}
+      </div>
+    );
+  }
+
   if (itemCount === 1) {
     if (hasScorecard) {
       return (
-        <div style={styles.postScorecardWrap}>
-          <Scorecard round={p.round} />
+        <div style={{ ...styles.postScorecardWrap, ...wrapStyle }}>
+          <Item onClick={onOpen}>
+            <Scorecard round={p.round} />
+          </Item>
         </div>
       );
     }
     return (
-      <div style={styles.postImageWrap}>
-        <PhotoTile src={images[0]} style={{ width: "100%", aspectRatio: "4 / 3", borderRadius: 18, border: "1.5px solid #74C69D" }} alt={photoAlt} />
+      <div style={{ ...styles.postImageWrap, ...wrapStyle }}>
+        <Item onClick={onOpen}>
+          <PhotoTile src={images[0]} style={{ width: "100%", height: "100%", objectFit: large ? "contain" : "cover", borderRadius: 18, border: "1.5px solid #74C69D" }} alt={photoAlt} />
+        </Item>
       </div>
     );
   }
@@ -1149,16 +1197,20 @@ function PostMedia({ post: p }) {
   }
 
   return (
-    <div>
-      <div ref={scrollRef} style={styles.postMediaScroll} onScroll={handleScroll}>
+    <div style={wrapStyle}>
+      <div ref={scrollRef} style={{ ...styles.postMediaScroll, ...(large ? { flex: 1, minHeight: 0 } : {}) }} onScroll={handleScroll}>
         {hasScorecard && (
-          <div style={styles.postMediaScrollItem}>
-            <Scorecard round={p.round} />
+          <div style={{ ...styles.postMediaScrollItem, ...(large ? { height: "100%" } : {}) }}>
+            <Item onClick={onOpen}>
+              <Scorecard round={p.round} />
+            </Item>
           </div>
         )}
         {images.map((src, i) => (
-          <div key={i} style={styles.postMediaScrollItem}>
-            <PhotoTile src={src} style={{ width: "100%", height: "100%", aspectRatio: "4 / 3", borderRadius: 18, border: "1.5px solid #74C69D" }} alt={`${photoAlt} (${i + 1}/${images.length})`} />
+          <div key={i} style={{ ...styles.postMediaScrollItem, ...(large ? { height: "100%" } : {}) }}>
+            <Item onClick={onOpen}>
+              <PhotoTile src={src} style={{ width: "100%", height: "100%", objectFit: large ? "contain" : "cover", borderRadius: 18, border: "1.5px solid #74C69D" }} alt={`${photoAlt} (${i + 1}/${images.length})`} />
+            </Item>
           </div>
         ))}
       </div>
@@ -1171,7 +1223,7 @@ function PostMedia({ post: p }) {
   );
 }
 
-function PostCard({ post: p, onLike, onOpenComments, onOpenLikers, onDelete, myName, onOpenProfile, authorPhoto, profiles }) {
+function PostCard({ post: p, onLike, onOpenComments, onOpenLikers, onDelete, myName, onOpenProfile, authorPhoto, profiles, onOpenPost }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const previewComments = p.comments.slice(-2);
   const isMine = p.author === myName;
@@ -1236,7 +1288,7 @@ function PostCard({ post: p, onLike, onOpenComments, onOpenLikers, onDelete, myN
 
       {p.text && <div style={styles.noteText}>{p.text}</div>}
 
-      <PostMedia post={p} />
+      <PostMedia post={p} onOpen={() => onOpenPost(p.id)} />
 
       {likedBy.length === 0 ? (
         <div style={styles.socialLine}>Be the first to give a golf clap!</div>
@@ -1294,6 +1346,104 @@ function PostCard({ post: p, onLike, onOpenComments, onOpenLikers, onDelete, myN
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// Full-screen "zoomed in" view of a single post: the media (scorecard/photos)
+// fills most of the screen, with the author row pinned at top and the
+// caption + golf-clap/comment/share actions pinned at the bottom — same
+// actions as the feed card, just laid out for a focused, one-post view.
+function PostViewerModal({ post: p, onClose, onLike, onOpenComments, onOpenLikers, onOpenProfile, myName, profiles }) {
+  if (!p) return null;
+  const likedBy = p.likedBy || [];
+  const iLiked = likedBy.includes(myName);
+  const authorPhoto = profiles?.[p.author]?.photo;
+
+  function handleShare() {
+    const summary =
+      p.kind === "round"
+        ? `${p.author} shot ${p.round.score} at ${p.round.course} on Stick Talk`
+        : `${p.author} on Stick Talk: ${p.text}`;
+    if (navigator.share) {
+      navigator.share({ text: summary }).catch(() => {});
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(summary).catch(() => {});
+    }
+  }
+
+  return (
+    <div style={styles.postViewerOverlay}>
+      <div style={styles.postViewerTop}>
+        <button style={styles.postAuthorBtn} onClick={() => onOpenProfile(p.author)}>
+          <Avatar photo={authorPhoto} name={p.author} style={styles.postAvatar} />
+          <div style={{ flex: 1, textAlign: "left" }}>
+            <div style={{ ...styles.cardName, color: "#FFFFFF" }}>{p.author}</div>
+            <div style={styles.cardMeta}>
+              {p.kind === "round" ? (
+                <>
+                  <MapPin size={12} color="#9C9990" /> {p.round.course} · {timeAgo(p.time)}
+                </>
+              ) : (
+                <>{timeAgo(p.time)}</>
+              )}
+            </div>
+          </div>
+        </button>
+        <button style={styles.iconBtn} onClick={onClose} aria-label="Close">
+          <X size={22} color="#FFFFFF" />
+        </button>
+      </div>
+
+      <div style={styles.postViewerMediaWrap}>
+        <PostMedia post={p} large />
+      </div>
+
+      <div style={styles.postViewerBottom}>
+        {p.text && <div style={{ ...styles.noteText, color: "#FFFFFF" }}>{p.text}</div>}
+
+        {likedBy.length === 0 ? (
+          <div style={styles.socialLine}>Be the first to give a golf clap!</div>
+        ) : (
+          <button style={styles.likersRow} onClick={() => onOpenLikers(p.id)}>
+            <div style={styles.likersStack}>
+              {likedBy.slice(0, 4).map((name, i) => (
+                <Avatar
+                  key={name}
+                  photo={profiles?.[name]?.photo}
+                  name={name}
+                  style={{ ...styles.likersAvatar, marginLeft: i === 0 ? 0 : -8, zIndex: 4 - i }}
+                />
+              ))}
+            </div>
+            <span style={styles.likersCountText}>
+              {likedBy.length} gave {likedBy.length === 1 ? "a golf clap" : "golf claps"}
+            </span>
+          </button>
+        )}
+
+        <div style={styles.cardActions}>
+          <button style={styles.actionBtnFull} onClick={() => onLike(p.id)} aria-label="Golf clap">
+            <span
+              style={{
+                fontSize: 21,
+                lineHeight: 1,
+                filter: iLiked ? "none" : "grayscale(1) opacity(0.55)",
+                transform: iLiked ? "scale(1.08)" : "scale(1)",
+                transition: "transform 0.12s ease",
+              }}
+            >
+              👏
+            </span>
+          </button>
+          <button style={styles.actionBtnFull} onClick={() => onOpenComments(p.id)} aria-label="Comment">
+            <MessageCircle size={21} color="#9C9990" />
+          </button>
+          <button style={styles.actionBtnFull} onClick={handleShare} aria-label="Share">
+            <Share2 size={20} color="#9C9990" />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -2846,6 +2996,10 @@ const styles = {
   ghinModalCopy: { fontSize: 13, color: "#A3A199", lineHeight: 1.5, marginBottom: 14 },
   settingsRow: { width: "100%", background: "#232220", border: "1.5px solid #74C69D", borderRadius: 10, padding: "13px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", color: "#FFFFFF", fontSize: 13.5, marginBottom: 8 },
   modalOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", zIndex: 10 },
+  postViewerOverlay: { position: "fixed", inset: 0, background: "#000000", zIndex: 20, maxWidth: 420, margin: "0 auto", display: "flex", flexDirection: "column", fontFamily: "'Baloo 2', sans-serif" },
+  postViewerTop: { display: "flex", alignItems: "center", gap: 12, padding: "16px 16px 10px", borderBottom: "1.5px solid #74C69D" },
+  postViewerMediaWrap: { flex: 1, minHeight: 0, padding: "12px 16px", display: "flex" },
+  postViewerBottom: { padding: "10px 16px 18px", borderTop: "1.5px solid #74C69D" },
   modal: { background: "#232220", width: "100%", maxWidth: 420, margin: "0 auto", borderRadius: "18px 18px 0 0", padding: 20, border: "1.5px solid #74C69D", borderBottom: "none" },
   modalHead: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
   modalTitle: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 19 },
