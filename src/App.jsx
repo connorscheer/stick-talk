@@ -753,10 +753,10 @@ export default function App() {
   const q = searchQuery.trim().toLowerCase();
   const visibleFeedPosts = !q
     ? feedPosts
-    : feedPosts.filter((p) => p.author.toLowerCase().includes(q) || (p.text || "").toLowerCase().includes(q) || (p.kind === "round" && p.round.course.toLowerCase().includes(q)));
+    : feedPosts.filter((p) => (p.author || "").toLowerCase().includes(q) || (p.text || "").toLowerCase().includes(q) || (p.kind === "round" && (p.round.course || "").toLowerCase().includes(q)));
   const visibleMatches = !q
     ? matches
-    : matches.filter((m) => m.author.toLowerCase().includes(q) || m.course.toLowerCase().includes(q) || (m.note || "").toLowerCase().includes(q));
+    : matches.filter((m) => (m.author || "").toLowerCase().includes(q) || (m.course || "").toLowerCase().includes(q) || (m.note || "").toLowerCase().includes(q));
 
   const pendingCount = inbox.filter((r) => r.status === "pending").length;
 
@@ -1173,11 +1173,6 @@ function PostMedia({ post: p }) {
 
 function PostCard({ post: p, onLike, onOpenComments, onOpenLikers, onDelete, myName, onOpenProfile, authorPhoto, profiles }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const kindMeta = {
-    round: { label: null },
-    note: { label: null },
-  };
-  const meta = kindMeta[p.kind] || {};
   const previewComments = p.comments.slice(-2);
   const isMine = p.author === myName;
   const likedBy = p.likedBy || [];
@@ -1208,7 +1203,7 @@ function PostCard({ post: p, onLike, onOpenComments, onOpenLikers, onDelete, myN
                   <MapPin size={12} color="#9C9990" /> {p.round.course} · {timeAgo(p.time)}
                 </>
               ) : (
-                <>{meta.label ? `${meta.label} · ` : ""}{timeAgo(p.time)}</>
+                <>{timeAgo(p.time)}</>
               )}
             </div>
           </div>
