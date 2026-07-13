@@ -1150,16 +1150,19 @@ function MatchConfirmedTile({ post }) {
 function FitBox({ children }) {
   const outerRef = useRef(null);
   const innerRef = useRef(null);
-  const [scale, setScale] = useState(1);
+  const [scale, setScale] = useState({ x: 1, y: 1 });
 
   useLayoutEffect(() => {
     const outer = outerRef.current;
     const inner = innerRef.current;
     if (!outer || !inner) return;
     function recompute() {
-      const sx = outer.clientWidth / inner.scrollWidth;
-      const sy = outer.clientHeight / inner.scrollHeight;
-      setScale(Math.min(sx, sy, 1));
+      // Stretch independently on each axis so the box is always exactly the
+      // same size as a photo's — a uniform (aspect-preserving) scale would
+      // leave empty margins whenever the scorecard's proportions don't
+      // happen to match the box, making it look smaller than the photos
+      // next to it instead of a consistent size.
+      setScale({ x: outer.clientWidth / inner.scrollWidth, y: outer.clientHeight / inner.scrollHeight });
     }
     recompute();
     const ro = new ResizeObserver(recompute);
@@ -1169,8 +1172,8 @@ function FitBox({ children }) {
   }, [children]);
 
   return (
-    <div ref={outerRef} style={{ width: "100%", height: "100%", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div ref={innerRef} style={{ transform: `scale(${scale})`, transformOrigin: "center center" }}>
+    <div ref={outerRef} style={{ width: "100%", height: "100%", overflow: "hidden" }}>
+      <div ref={innerRef} style={{ transform: `scale(${scale.x}, ${scale.y})`, transformOrigin: "top left" }}>
         {children}
       </div>
     </div>
