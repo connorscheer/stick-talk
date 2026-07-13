@@ -3191,7 +3191,7 @@ const styles = {
   switchTrackOn: { background: "#74C69D" },
   switchThumb: { width: 18, height: 18, borderRadius: "50%", background: "#EDE6D6", transition: "transform 0.15s ease" },
   postImageWrap: { marginTop: 10 },
-  postScorecardWrap: {},
+  postScorecardWrap: { marginTop: 10 },
   postMediaScroll: { display: "flex", alignItems: "flex-start", gap: 10, overflowX: "auto", overflowY: "hidden", touchAction: "pan-x", overscrollBehaviorY: "contain", scrollSnapType: "x mandatory", scrollbarWidth: "none", msOverflowStyle: "none", marginTop: 10 },
   postMediaScrollItem: { flex: "0 0 100%", scrollSnapAlign: "start" },
   postMediaDots: { display: "flex", justifyContent: "center", gap: 6, marginTop: 8 },
@@ -3202,7 +3202,13 @@ const styles = {
   // taller fixed-height box used everywhere in the feed, leaving a gap of
   // plain background below it — so it visibly looked shorter than a photo
   // in the same slot, even though the invisible bounding box was identical.
-  scorecardWrap: { background: "#F5EFDD", border: "1.5px solid #74C69D", borderRadius: 18, padding: "16px 14px", marginTop: 12, height: "100%", display: "flex", flexDirection: "column" },
+  // No marginTop here — this card now always fills a fixed-height,
+  // overflow:hidden box (see PostMedia). A margin here would push the card
+  // down while its own height stayed the same, clipping the same number of
+  // pixels off the bottom — same box, but visibly sunk. Any spacing above
+  // the card belongs on the wrapper (postScorecardWrap / postMediaScroll),
+  // not here.
+  scorecardWrap: { background: "#F5EFDD", border: "1.5px solid #74C69D", borderRadius: 18, padding: "16px 14px", height: "100%", display: "flex", flexDirection: "column" },
   scorecardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, padding: "0 2px" },
   scorecardTitle: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 16, color: "#000000" },
   scorecardTeeLine: { fontSize: 12, color: "#6B6963", marginTop: 2 },
