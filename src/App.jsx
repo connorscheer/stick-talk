@@ -547,6 +547,7 @@ export default function App() {
   const [dataLoaded, setDataLoaded] = useState(false);
   const [myName, setMyName] = useState(null); // null until loaded from personal storage or entered
   const [nameLoaded, setNameLoaded] = useState(false);
+  const [roundsLoaded, setRoundsLoaded] = useState(false);
   const [showLogForm, setShowLogForm] = useState(false);
   const [showGhinModal, setShowGhinModal] = useState(false);
   const [ghinStatus, setGhinStatus] = useState("disconnected"); // disconnected | connected
@@ -600,6 +601,7 @@ export default function App() {
         if (account.name) setMyName(account.name);
         setHomeCourse(account.homeCourse || "Pinehurst Municipal");
         if (account.photo) setMyPhoto(account.photo);
+        if (account.rounds) setRounds(account.rounds);
       } else {
         const savedName = loadPersonal(STORAGE_KEYS.name, null);
         if (savedName) setMyName(savedName);
@@ -607,10 +609,13 @@ export default function App() {
         setHomeCourse(savedCourse || "Pinehurst Municipal");
         const savedPhoto = loadPersonal("sticktalk:my-photo", null);
         if (savedPhoto) setMyPhoto(savedPhoto);
+        const savedRounds = loadPersonal("sticktalk:my-rounds", null);
+        if (savedRounds) setRounds(savedRounds);
       }
       const savedTees = loadPersonal("sticktalk:my-tees", null);
       if (savedTees != null) setMyTees(savedTees);
       setNameLoaded(true);
+      setRoundsLoaded(true);
     })();
   }, [session]);
 
@@ -713,6 +718,18 @@ export default function App() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataLoaded, myName, myInitials, homeCourse, rounds, myPhoto]);
+
+  // Persist your actual round history (the "Monthly Snapshot" numbers are
+  // derived from this) both locally and to the shared per-account record,
+  // so it survives a refresh and follows you to a new device instead of
+  // resetting to empty. Guarded on roundsLoaded so this can't fire with the
+  // still-empty initial state and stomp real rounds before the load finishes.
+  useEffect(() => {
+    if (!roundsLoaded || !myName) return;
+    savePersonal("sticktalk:my-rounds", rounds);
+    saveAccountField("rounds", rounds);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roundsLoaded, myName, rounds]);
 
   // Merges one field into this account's shared identity record so it's
   // there waiting the next time this person signs in on any device.
