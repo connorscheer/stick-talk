@@ -2779,22 +2779,28 @@ function LogRoundModal({ onClose, onSubmit }) {
             </div>
 
             <div style={styles.scorecardSummaryRow}>
-              <div style={styles.scorecardSummaryItem}>
-                <span style={styles.scorecardSummaryLabel}>OUT</span>
-                <span style={styles.scorecardSummaryValue}>
-                  {holeOrder.slice(0, 9).reduce((sum, h) => sum + (Number(holeScores[h - 1]) || 0), 0) || "—"}
-                </span>
-              </div>
-              <div style={styles.scorecardSummaryItem}>
-                <span style={styles.scorecardSummaryLabel}>IN</span>
-                <span style={styles.scorecardSummaryValue}>
-                  {holeOrder.slice(9, 18).reduce((sum, h) => sum + (Number(holeScores[h - 1]) || 0), 0) || "—"}
-                </span>
-              </div>
-              <div style={styles.scorecardSummaryItem}>
-                <span style={styles.scorecardSummaryLabel}>TOTAL</span>
-                <span style={{ ...styles.scorecardSummaryValue, color: "#74C69D" }}>{holeTotal || "—"}</span>
-              </div>
+              {(() => {
+                const outScore = holeOrder.slice(0, 9).reduce((sum, h) => sum + (Number(holeScores[h - 1]) || 0), 0);
+                const inScore = holeOrder.slice(9, 18).reduce((sum, h) => sum + (Number(holeScores[h - 1]) || 0), 0);
+                const frontPar = holeOrder.slice(0, 9).reduce((sum, h) => sum + PAR_LAYOUT[h - 1], 0);
+                const backPar = holeOrder.slice(9, 18).reduce((sum, h) => sum + PAR_LAYOUT[h - 1], 0);
+                return (
+                  <>
+                    <div style={styles.scorecardSummaryItem}>
+                      <span style={styles.scorecardSummaryLabel}>OUT</span>
+                      <span style={{ ...styles.scorecardSummaryValue, color: outScore ? relToParColor(outScore - frontPar) : undefined }}>{outScore || "—"}</span>
+                    </div>
+                    <div style={styles.scorecardSummaryItem}>
+                      <span style={styles.scorecardSummaryLabel}>IN</span>
+                      <span style={{ ...styles.scorecardSummaryValue, color: inScore ? relToParColor(inScore - backPar) : undefined }}>{inScore || "—"}</span>
+                    </div>
+                    <div style={styles.scorecardSummaryItem}>
+                      <span style={styles.scorecardSummaryLabel}>TOTAL</span>
+                      <span style={{ ...styles.scorecardSummaryValue, color: holeTotal ? relToParColor(holeTotal - 72) : undefined }}>{holeTotal || "—"}</span>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
             {roundExtrasBlock}
