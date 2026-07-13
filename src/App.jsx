@@ -1979,6 +1979,14 @@ const HOLES = Array.from({ length: 18 }, (_, i) => i + 1);
 // pars aren't tracked, so this is a representative pattern, not the real card.
 const PAR_LAYOUT = [4, 4, 3, 5, 4, 4, 3, 5, 4, 4, 4, 3, 5, 4, 4, 3, 5, 4];
 
+// For the OUT/IN/TOTAL/TO PAR summary row: a simpler 3-tier rule than the
+// per-hole scoreColor below (which distinguishes eagles/birdies/bogeys/doubles).
+function relToParColor(diff) {
+  if (diff < 0) return "#C1443A"; // under par
+  if (diff === 0) return "#74C69D"; // even par
+  return "#000000"; // over par
+}
+
 function scoreColor(diff) {
   if (diff <= -2) return "#F4C430"; // eagle or better
   if (diff === -1) return "#74C69D"; // birdie
@@ -2025,6 +2033,8 @@ function Scorecard({ round }) {
   const back = round.holes.slice(9, 18);
   const out = front.reduce((s, h) => s + h.strokes, 0);
   const inn = back.reduce((s, h) => s + h.strokes, 0);
+  const frontPar = PAR_LAYOUT.slice(0, 9).reduce((s, p) => s + p, 0);
+  const backPar = PAR_LAYOUT.slice(9, 18).reduce((s, p) => s + p, 0);
 
   // Traditional scorecard notation: birdie gets a circle, eagle-or-better
   // gets a double circle, bogey gets a square, double-bogey-or-worse gets
@@ -2096,19 +2106,19 @@ function Scorecard({ round }) {
       <div style={styles.scorecardSummaryRow}>
         <div style={styles.scorecardSummaryItem}>
           <span style={styles.scorecardSummaryLabel}>OUT</span>
-          <span style={styles.scorecardSummaryValue}>{out}</span>
+          <span style={{ ...styles.scorecardSummaryValue, color: relToParColor(out - frontPar) }}>{out}</span>
         </div>
         <div style={styles.scorecardSummaryItem}>
           <span style={styles.scorecardSummaryLabel}>IN</span>
-          <span style={styles.scorecardSummaryValue}>{inn}</span>
+          <span style={{ ...styles.scorecardSummaryValue, color: relToParColor(inn - backPar) }}>{inn}</span>
         </div>
         <div style={styles.scorecardSummaryItem}>
           <span style={styles.scorecardSummaryLabel}>TOTAL</span>
-          <span style={{ ...styles.scorecardSummaryValue, color: "#74C69D" }}>{round.score}</span>
+          <span style={{ ...styles.scorecardSummaryValue, color: relToParColor(toPar) }}>{round.score}</span>
         </div>
         <div style={styles.scorecardSummaryItem}>
           <span style={styles.scorecardSummaryLabel}>TO PAR</span>
-          <span style={{ ...styles.scorecardSummaryValue, color: scoreColor(toPar <= 0 ? -1 : toPar >= 2 ? 2 : toPar) }}>
+          <span style={{ ...styles.scorecardSummaryValue, color: relToParColor(toPar) }}>
             {toParLabel}
           </span>
         </div>
