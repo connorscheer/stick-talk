@@ -1024,7 +1024,7 @@ function HomeTab({
         p.kind === "match" ? (
           <MatchConfirmedTile key={p.id} post={p} />
         ) : (
-          <PostCard key={p.id} post={p} onLike={onLike} onOpenComments={onOpenComments} onOpenLikers={onOpenLikers} onDelete={onDelete} myName={myName} onOpenProfile={onOpenProfile} authorPhoto={profiles?.[p.author]?.photo} />
+          <PostCard key={p.id} post={p} onLike={onLike} onOpenComments={onOpenComments} onOpenLikers={onOpenLikers} onDelete={onDelete} myName={myName} onOpenProfile={onOpenProfile} authorPhoto={profiles?.[p.author]?.photo} profiles={profiles} />
         )
       )}
     </div>
@@ -1112,7 +1112,7 @@ function MatchConfirmedTile({ post }) {
   );
 }
 
-function PostCard({ post: p, onLike, onOpenComments, onOpenLikers, onDelete, myName, onOpenProfile, authorPhoto }) {
+function PostCard({ post: p, onLike, onOpenComments, onOpenLikers, onDelete, myName, onOpenProfile, authorPhoto, profiles }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const kindMeta = {
     round: { label: null },
@@ -1200,9 +1200,12 @@ function PostCard({ post: p, onLike, onOpenComments, onOpenLikers, onDelete, myN
         <button style={styles.likersRow} onClick={() => onOpenLikers(p.id)}>
           <div style={styles.likersStack}>
             {likedBy.slice(0, 4).map((name, i) => (
-              <div key={name} style={{ ...styles.likersAvatar, background: colorForName(name), marginLeft: i === 0 ? 0 : -8, zIndex: 4 - i }}>
-                {initialsOf(name)}
-              </div>
+              <Avatar
+                key={name}
+                photo={profiles?.[name]?.photo}
+                name={name}
+                style={{ ...styles.likersAvatar, marginLeft: i === 0 ? 0 : -8, zIndex: 4 - i }}
+              />
             ))}
           </div>
           <span style={styles.likersCountText}>
@@ -2723,14 +2726,14 @@ const styles = {
   cardMeta: { fontSize: 13, color: "#9C9990", display: "flex", alignItems: "center", gap: 4, marginTop: 3 },
   noteText: { fontSize: 17, color: "#FFFFFF", marginTop: 8, lineHeight: 1.45, fontWeight: 500 },
   avatarSm: { width: 36, height: 36, borderRadius: "50%", background: "#4A4844", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12.5, fontWeight: 700, flexShrink: 0 },
-  postAvatar: { width: 46, height: 46, borderRadius: "50%", background: "#4A4844", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 700, flexShrink: 0 },
+  postAvatar: { width: 46, height: 46, borderRadius: "50%", border: "1.5px solid #74C69D", overflow: "hidden", background: "#4A4844", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 700, flexShrink: 0 },
   avatarLg: { width: "100%", height: "100%", borderRadius: "50%", background: "#4A4844", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 700 },
   cardActions: { display: "flex", marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)" },
   actionBtnFull: { flex: 1, background: "none", border: "none", display: "flex", alignItems: "center", justifyContent: "center", padding: "9px 0" },
   socialLine: { fontSize: 13, color: "#9C9990", marginTop: 14 },
   likersRow: { display: "flex", alignItems: "center", gap: 8, marginTop: 14, background: "none", border: "none", padding: 0 },
   likersStack: { display: "flex", alignItems: "center" },
-  likersAvatar: { width: 24, height: 24, borderRadius: "50%", border: "2px solid #232220", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9.5, fontWeight: 700, color: "#000000" },
+  likersAvatar: { width: 24, height: 24, borderRadius: "50%", border: "1.5px solid #74C69D", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9.5, fontWeight: 700, color: "#000000" },
   likersCountText: { fontSize: 13, color: "#9C9990" },
   kebabBtn: { background: "none", border: "none", padding: 4, display: "flex" },
   menuBackdrop: { position: "fixed", inset: 0, background: "transparent", border: "none", zIndex: 5 },
