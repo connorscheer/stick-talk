@@ -1230,7 +1230,7 @@ function PostMedia({ post: p, large, onOpen }) {
     return (
       <div style={{ ...styles.postImageWrap, ...wrapStyle }}>
         <Item>
-          <PhotoTile src={images[0]} style={{ width: "100%", height: "100%", objectFit: large ? "contain" : "cover", borderRadius: large ? 0 : 18, border: large ? "none" : "1.5px solid #74C69D" }} alt={photoAlt} />
+          <PhotoTile src={images[0]} style={{ width: "100%", height: large ? "100%" : MEDIA_BOX_HEIGHT, objectFit: large ? "contain" : "cover", borderRadius: large ? 0 : 18, border: large ? "none" : "1.5px solid #74C69D" }} alt={photoAlt} />
         </Item>
       </div>
     );
@@ -1245,18 +1245,18 @@ function PostMedia({ post: p, large, onOpen }) {
 
   return (
     <div style={wrapStyle}>
-      <div ref={scrollRef} style={{ ...styles.postMediaScroll, ...(large ? { flex: 1, minHeight: 0 } : {}) }} onScroll={handleScroll}>
+      <div ref={scrollRef} style={{ ...styles.postMediaScroll, ...(large ? { flex: 1, minHeight: 0 } : { height: MEDIA_BOX_HEIGHT }) }} onScroll={handleScroll}>
         {hasScorecard && (
-          <div style={{ ...styles.postMediaScrollItem, ...(large ? { height: "100%" } : {}) }}>
+          <div style={{ ...styles.postMediaScrollItem, height: large ? "100%" : MEDIA_BOX_HEIGHT }}>
             <Item>
               <Scorecard round={p.round} />
             </Item>
           </div>
         )}
         {images.map((src, i) => (
-          <div key={i} style={{ ...styles.postMediaScrollItem, ...(large ? { height: "100%" } : {}) }}>
+          <div key={i} style={{ ...styles.postMediaScrollItem, height: large ? "100%" : MEDIA_BOX_HEIGHT }}>
             <Item>
-              <PhotoTile src={src} style={{ width: "100%", height: "100%", objectFit: large ? "contain" : "cover", borderRadius: large ? 0 : 18, border: large ? "none" : "1.5px solid #74C69D" }} alt={`${photoAlt} (${i + 1}/${images.length})`} />
+              <PhotoTile src={src} style={{ width: "100%", height: large ? "100%" : MEDIA_BOX_HEIGHT, objectFit: large ? "contain" : "cover", borderRadius: large ? 0 : 18, border: large ? "none" : "1.5px solid #74C69D" }} alt={`${photoAlt} (${i + 1}/${images.length})`} />
             </Item>
           </div>
         ))}
