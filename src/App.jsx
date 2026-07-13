@@ -816,8 +816,20 @@ export default function App() {
     const trimmed = name.trim();
     if (!trimmed) return;
     const id = "group-" + Date.now();
-    updateGroups((prev) => [{ id, name: trimmed, photo: photo || null, members: [myName], createdBy: myName, createdAt: new Date().toISOString() }, ...prev]);
+    updateGroups((prev) => [{ id, name: trimmed, photo: photo || null, members: [myName], createdBy: myName, createdAt: new Date().toISOString(), messages: [] }, ...prev]);
     setShowCreateGroup(false);
+  }
+
+  function sendGroupMessage(id, text) {
+    if (!text.trim()) return;
+    markRecentEdit("groups", id);
+    updateGroups((prev) =>
+      prev.map((g) =>
+        g.id === id
+          ? { ...g, messages: [...(g.messages || []), { id: "gm-" + Date.now(), author: myName, text: text.trim(), time: new Date().toISOString() }] }
+          : g
+      )
+    );
   }
 
   // Joining a group now needs the owner's approval — request adds you to
@@ -1078,12 +1090,12 @@ export default function App() {
 
   const feedPosts = [...posts].sort((a, b) => new Date(b.time) - new Date(a.time));
 
-  // Search finds people and groups, not feed/match content — every account
-  // publishes a `profiles` entry as soon as they sign in (see the effect
-  // that saves your own snapshot), so this doubles as a full user directory.
+  // Search finds people, not feed/match content — every account publishes a
+  // `profiles` entry as soon as they sign in (see the effect that saves
+  // your own snapshot), so this doubles as a full user directory. Group
+  // search lives separately, inside the Social tab's Groups sub-tab.
   const q = searchQuery.trim().toLowerCase();
   const userSearchResults = !q ? [] : Object.keys(profiles).filter((n) => n !== myName && n.toLowerCase().includes(q));
-  const groupSearchResults = !q ? [] : groups.filter((g) => g.name.toLowerCase().includes(q));
 
   const pendingCount = inbox.filter((r) => r.status === "pending").length;
 
@@ -1204,7 +1216,7 @@ export default function App() {
             </button>
             <input
               style={styles.headerSearchInput}
-              placeholder="Search people or groups…"
+              placeholder="Search people…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               autoFocus
@@ -1246,7 +1258,6 @@ export default function App() {
         {showSearch && searchQuery.trim() ? (
           <UserSearchResults
             results={userSearchResults}
-            groupResults={groupSearchResults}
             profiles={profiles}
             myName={myName}
             myFollowing={follows[myName] || {}}
@@ -1255,13 +1266,6 @@ export default function App() {
               setShowSearch(false);
               setSearchQuery("");
               openProfile(name);
-            }}
-            onOpenGroup={(id) => {
-              setShowSearch(false);
-              setSearchQuery("");
-              setTab("match");
-              setMatchSubTab("groups");
-              setViewingGroup(id);
             }}
           />
         ) : (
@@ -1411,7 +1415,24 @@ export default function App() {
 
       {showCreateGroup && <CreateGroupModal onClose={() => setShowCreateGroup(false)} onSubmit={createGroup} />}
 
-      {viewingGroup && (
+      {viewingGroup && (groups.find((g) => g.id === viewingGroup)?.members || []).includes(myName) && (
+        <GroupChatModal
+          group={groups.find((g) => g.id === viewingGroup)}
+          myName={myName}
+          profiles={profiles}
+          onClose={() => setViewingGroup(null)}
+          onSend={(text) => sendGroupMessage(viewingGroup, text)}
+          onLeave={() => leaveGroup(viewingGroup)}
+          onDelete={() => deleteGroup(viewingGroup)}
+          onRespondRequest={respondToGroupRequest}
+          onOpenProfile={(name) => {
+            setViewingGroup(null);
+            openProfile(name);
+          }}
+        />
+      )}
+
+      {viewingGroup && !(groups.find((g) => g.id === viewingGroup)?.members || []).includes(myName) && (
         <GroupDetailModal
           group={groups.find((g) => g.id === viewingGroup)}
           myName={myName}
@@ -2281,18 +2302,17 @@ function FollowListModal({ title, names, profiles, myFollowingMap, myName, onTog
   );
 }
 
-function UserSearchResults({ results, groupResults = [], profiles, myName, myFollowing, onToggleFollow, onOpenProfile, onOpenGroup }) {
-  if (results.length === 0 && groupResults.length === 0) {
+function UserSearchResults({ results, profiles, myFollowing, onToggleFollow, onOpenProfile }) {
+  if (results.length === 0) {
     return (
       <div style={{ ...styles.empty, color: "rgba(255,255,255,0.75)" }}>
-        <p style={{ ...styles.emptyTitle, color: "#FFFFFF" }}>Nothing found</p>
+        <p style={{ ...styles.emptyTitle, color: "#FFFFFF" }}>No one found</p>
         <p style={styles.emptyBody}>Try a different name.</p>
       </div>
     );
   }
   return (
     <div style={styles.tabPad}>
-      {results.length > 0 && <div style={{ ...styles.sectionLabel, color: "#FFFFFF" }}>People</div>}
       {results.map((name) => {
         const profile = profiles[name];
         const isFollowing = !!myFollowing[name];
@@ -2316,25 +2336,6 @@ function UserSearchResults({ results, groupResults = [], profiles, myName, myFol
               {isFollowing ? "Following" : "Follow"}
             </button>
           </div>
-        );
-      })}
-
-      {groupResults.length > 0 && <div style={{ ...styles.sectionLabel, color: "#FFFFFF", marginTop: results.length > 0 ? 8 : 0 }}>Groups</div>}
-      {groupResults.map((g) => {
-        const members = g.members || [];
-        const iJoined = members.includes(myName);
-        return (
-          <button key={g.id} style={styles.groupCard} onClick={() => onOpenGroup(g.id)}>
-            <Avatar photo={g.photo} name={g.name} style={styles.postAvatar} />
-            <div style={{ flex: 1, textAlign: "left" }}>
-              <div style={styles.cardName}>{g.name}</div>
-              <div style={styles.cardMeta}>
-                <Users size={12} color="#9C9990" /> {members.length} {members.length === 1 ? "member" : "members"}
-                {iJoined && <span style={styles.groupJoinedTag}>Joined</span>}
-              </div>
-            </div>
-            <ChevronRight size={16} color="#9C9990" />
-          </button>
         );
       })}
     </div>
@@ -2644,7 +2645,10 @@ function MatchTab({
 }
 
 function GroupsTab({ groups, myName, profiles, onCreateGroup, onOpenGroup }) {
-  const sorted = [...groups].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const filtered = !q ? groups : groups.filter((g) => g.name.toLowerCase().includes(q));
+  const sorted = [...filtered].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   return (
     <div style={styles.tabPad}>
@@ -2654,12 +2658,22 @@ function GroupsTab({ groups, myName, profiles, onCreateGroup, onOpenGroup }) {
         <Plus size={17} color="#74C69D" />
       </button>
 
-      <div style={{ ...styles.sectionLabel, color: "#FFFFFF" }}>Your groups</div>
+      <div style={styles.groupSearchWrap}>
+        <Search size={15} color="#9C9990" />
+        <input
+          style={styles.groupSearchInput}
+          placeholder="Search groups…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </div>
+
+      <div style={{ ...styles.sectionLabel, color: "#FFFFFF" }}>{q ? "Results" : "Your groups"}</div>
 
       {sorted.length === 0 && (
         <div style={{ ...styles.empty, color: "rgba(255,255,255,0.75)" }}>
-          <p style={{ ...styles.emptyTitle, color: "#FFFFFF" }}>No groups yet</p>
-          <p style={styles.emptyBody}>Start one above — round-trip buddies, weekend league, whoever.</p>
+          <p style={{ ...styles.emptyTitle, color: "#FFFFFF" }}>{q ? "No groups found" : "No groups yet"}</p>
+          <p style={styles.emptyBody}>{q ? "Try a different name." : "Start one above — round-trip buddies, weekend league, whoever."}</p>
         </div>
       )}
 
@@ -2738,6 +2752,146 @@ function CreateGroupModal({ onClose, onSubmit }) {
           Create group
         </button>
       </div>
+    </div>
+  );
+}
+
+// Group chat — only rendered once you're already a member (see the
+// membership check where this is invoked); non-members see GroupDetailModal
+// (the join/request screen) instead, so the conversation itself stays
+// private to people the owner has actually accepted.
+function GroupChatModal({ group, myName, profiles, onClose, onSend, onLeave, onDelete, onRespondRequest, onOpenProfile }) {
+  const [text, setText] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [showMembers, setShowMembers] = useState(false);
+  const scrollRef = useRef(null);
+  const isMine = group?.createdBy === myName;
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [group?.messages?.length, showMembers]);
+
+  if (!group) return null;
+  const members = group.members || [];
+  const messages = group.messages || [];
+  const pendingNames = Object.keys(group.pendingRequests || {});
+
+  function submit() {
+    if (!text.trim()) return;
+    onSend(text);
+    setText("");
+  }
+
+  return (
+    <div style={styles.postViewerOverlay} onClick={(e) => e.stopPropagation()}>
+      <div style={styles.postViewerTop}>
+        <button style={styles.postViewerIconBtn} onClick={onClose} aria-label="Back">
+          <ChevronLeft size={22} color="#FFFFFF" />
+        </button>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ ...styles.cardName, color: "#FFFFFF" }}>{group.name}</div>
+          <div style={{ ...styles.activityTime, marginTop: 0 }}>{members.length} {members.length === 1 ? "member" : "members"}</div>
+        </div>
+        <div style={{ position: "relative", display: "flex", gap: 4 }}>
+          <button style={styles.postViewerIconBtn} onClick={() => setShowMembers((v) => !v)} aria-label="Members">
+            <Users size={19} color="#FFFFFF" />
+            {isMine && pendingNames.length > 0 && <span style={styles.inboxBadge}>{pendingNames.length}</span>}
+          </button>
+          <button style={styles.postViewerIconBtn} onClick={() => setMenuOpen((o) => !o)} aria-label="Group options">
+            <MoreHorizontal size={20} color="#FFFFFF" />
+          </button>
+          {menuOpen && (
+            <>
+              <button style={styles.menuBackdrop} onClick={() => setMenuOpen(false)} aria-label="Close menu" />
+              <div style={styles.postMenu}>
+                <button style={styles.postMenuDeleteItem} onClick={() => { setMenuOpen(false); onLeave(); onClose(); }}>
+                  Leave group
+                </button>
+                {isMine && (
+                  <button style={styles.postMenuDeleteItem} onClick={() => { setMenuOpen(false); onDelete(); }}>
+                    <Trash2 size={14} color="#C1443A" /> Delete group
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {showMembers ? (
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "12px 16px" }}>
+          {isMine && pendingNames.length > 0 && (
+            <>
+              <div style={styles.sectionLabel}>Requests to join</div>
+              {pendingNames.map((name) => (
+                <div key={name} style={styles.inboxCard}>
+                  <button style={{ ...styles.postAuthorBtn, width: "100%" }} onClick={() => onOpenProfile(name)}>
+                    <Avatar photo={profiles?.[name]?.photo} name={name} style={styles.postAvatar} />
+                    <div style={{ textAlign: "left" }}>
+                      <div style={styles.cardName}>{name}</div>
+                    </div>
+                  </button>
+                  <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                    <button style={styles.declineBtn} onClick={() => onRespondRequest(group.id, name, false)}>
+                      Decline
+                    </button>
+                    <button style={styles.acceptBtn} onClick={() => onRespondRequest(group.id, name, true)}>
+                      <Check size={14} color="#000000" strokeWidth={3} /> Accept
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+          <div style={styles.sectionLabel}>Members</div>
+          {members.map((name) => (
+            <button key={name} style={styles.followListRow} onClick={() => onOpenProfile(name)}>
+              <Avatar photo={profiles?.[name]?.photo} name={name} style={styles.postAvatar} />
+              <div style={{ textAlign: "left" }}>
+                <div style={styles.cardName}>
+                  {name} {name === group.createdBy && <span style={styles.profileViewYouTag}>creator</span>}
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <>
+          <div ref={scrollRef} style={styles.groupChatScroll}>
+            {messages.length === 0 && (
+              <div style={{ ...styles.empty, color: "rgba(255,255,255,0.75)" }}>
+                <p style={{ ...styles.emptyTitle, color: "#FFFFFF" }}>No messages yet</p>
+                <p style={styles.emptyBody}>Say hey to the group.</p>
+              </div>
+            )}
+            {messages.map((m) => {
+              const mine = m.author === myName;
+              return (
+                <div key={m.id} style={{ ...styles.groupChatRow, flexDirection: mine ? "row-reverse" : "row", alignSelf: mine ? "flex-end" : "flex-start" }}>
+                  <Avatar photo={profiles?.[m.author]?.photo} name={m.author} style={{ ...styles.postAvatar, width: 28, height: 28 }} />
+                  <div style={{ ...styles.groupChatBubble, ...(mine ? styles.groupChatBubbleMine : {}) }}>
+                    {!mine && <div style={styles.groupChatAuthor}>{m.author}</div>}
+                    <div style={{ color: mine ? "#000000" : "#FFFFFF" }}>{m.text}</div>
+                    <div style={{ ...styles.activityTime, color: mine ? "rgba(0,0,0,0.55)" : "#6B6963" }}>{timeAgo(m.time)}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div style={styles.groupChatInputRow}>
+            <input
+              style={styles.groupChatInput}
+              placeholder="Message the group…"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && submit()}
+            />
+            <button style={styles.groupChatSendBtn} onClick={submit} disabled={!text.trim()} aria-label="Send">
+              <Send size={16} color="#000000" />
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -4066,6 +4220,16 @@ const styles = {
   slider: { width: "100%", marginTop: 6, accentColor: "#74C69D" },
   matchCard: { background: "#232220", border: "1.5px solid #74C69D", borderRadius: 14, padding: 12, marginBottom: 10, display: "flex", gap: 10, alignItems: "flex-start" },
   groupCard: { display: "flex", alignItems: "center", gap: 10, width: "100%", background: "#232220", border: "1.5px solid #74C69D", borderRadius: 14, padding: 12, marginBottom: 10, textAlign: "left" },
+  groupSearchWrap: { display: "flex", alignItems: "center", gap: 8, background: "#171513", border: "1.5px solid #4A4844", borderRadius: 10, padding: "9px 12px", marginTop: 12, marginBottom: 14 },
+  groupSearchInput: { flex: 1, background: "none", border: "none", color: "#FFFFFF", fontSize: 14 },
+  groupChatScroll: { flex: 1, minHeight: 0, overflowY: "auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 12 },
+  groupChatRow: { display: "flex", gap: 8, alignItems: "flex-end", maxWidth: "82%" },
+  groupChatBubble: { background: "#232220", border: "1.5px solid #4A4844", borderRadius: 14, padding: "8px 12px", fontSize: 14 },
+  groupChatBubbleMine: { background: "#74C69D", border: "1.5px solid #74C69D", marginLeft: "auto", alignSelf: "flex-end" },
+  groupChatAuthor: { fontSize: 11, color: "#74C69D", fontWeight: 700, marginBottom: 2 },
+  groupChatInputRow: { flexShrink: 0, display: "flex", gap: 8, alignItems: "center", padding: "10px 16px", borderTop: "1px solid rgba(255,255,255,0.1)" },
+  groupChatInput: { flex: 1, background: "#171513", border: "1.5px solid #4A4844", borderRadius: 999, padding: "10px 16px", color: "#FFFFFF", fontSize: 14 },
+  groupChatSendBtn: { flexShrink: 0, background: "#74C69D", border: "none", borderRadius: "50%", width: 38, height: 38, display: "flex", alignItems: "center", justifyContent: "center" },
   groupJoinedTag: { marginLeft: 8, fontSize: 10.5, color: "#74C69D", fontWeight: 700 },
   availText: { fontSize: 11.5, color: "#74C69D", marginTop: 3 },
   hcpChip: { fontFamily: "'Baloo 2', sans-serif", fontSize: 11, background: "#171513", border: "1.5px solid #74C69D", borderRadius: 6, padding: "2px 7px" },
