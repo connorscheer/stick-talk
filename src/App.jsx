@@ -1420,12 +1420,14 @@ function MatchConfirmedTile({ post }) {
 const MEDIA_LARGE_HEIGHT = "64vh";
 
 // Fixed box height (px) shared by every scorecard and photo in the feed.
-// Bumped from 400 to fit the scorecard's "Differential / Rating / Slope"
-// footer line, which was getting clipped by this box's overflow:hidden —
-// re-measure if the scorecard's internal spacing changes again.
-// Deliberately a hardcoded constant, not a live measurement — it should
-// never shift based on content.
-const MEDIA_BOX_HEIGHT = 430;
+// A measured replica of the scorecard's markup comes out to ~424px tall at
+// 430, i.e. only ~2px of headroom before its "Differential / Rating /
+// Slope" footer line clips against this box's overflow:hidden — too tight
+// to survive normal font-rendering variance across browsers. Bumped to 460
+// for real margin. Re-measure if the scorecard's internal spacing changes
+// again. Deliberately a hardcoded constant, not a live measurement — it
+// should never shift based on content.
+const MEDIA_BOX_HEIGHT = 460;
 
 function PostMedia({ post: p, large, onOpen }) {
   const [active, setActive] = useState(0);
