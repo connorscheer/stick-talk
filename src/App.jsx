@@ -1419,12 +1419,13 @@ function MatchConfirmedTile({ post }) {
 // document flow (Twitter-style) rather than floating on top of the image.
 const MEDIA_LARGE_HEIGHT = "64vh";
 
-// Fixed box height (px) shared by every scorecard and photo in the feed —
-// measured from real posted scorecards (they range ~332-379px depending on
-// whether the tee/yardage line is shown), with a little headroom so nothing
-// ever clips. Deliberately a hardcoded constant, not a live measurement —
-// it should never shift based on content.
-const MEDIA_BOX_HEIGHT = 400;
+// Fixed box height (px) shared by every scorecard and photo in the feed.
+// Bumped from 400 to fit the scorecard's "Differential / Rating / Slope"
+// footer line, which was getting clipped by this box's overflow:hidden —
+// re-measure if the scorecard's internal spacing changes again.
+// Deliberately a hardcoded constant, not a live measurement — it should
+// never shift based on content.
+const MEDIA_BOX_HEIGHT = 430;
 
 function PostMedia({ post: p, large, onOpen }) {
   const [active, setActive] = useState(0);
@@ -3591,7 +3592,7 @@ const styles = {
   scorecardSummaryItem: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center" },
   scorecardSummaryLabel: { fontSize: 10.5, color: "#6B6963", fontWeight: 700, letterSpacing: 0.5 },
   scorecardSummaryValue: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 24, color: "#000000", marginTop: 3 },
-  scorecardFoot: { fontFamily: "'Baloo 2', sans-serif", fontSize: 12, color: "#6B6963", marginTop: 12, textAlign: "center" },
+  scorecardFoot: { fontFamily: "'Baloo 2', sans-serif", fontSize: 12, color: "#6B6963", marginTop: 8, textAlign: "center" },
   scorecardTicket: { background: "#F5EFDD", border: "1.5px solid #74C69D", borderRadius: 18, padding: 18, marginTop: 12 },
   scorecardTicketTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 },
   scorecardTicketCourse: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 16, color: "#000000" },
