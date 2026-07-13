@@ -1032,7 +1032,7 @@ export default function App() {
                 <Avatar photo={myPhoto} name={myName} style={styles.avatarSm} />
               </button>
               <div style={styles.teesBadge}>
-                <TeeIcon size={13} />
+                <TeeIcon size={11} />
                 <span style={styles.teesBadgeText}>{myTees.toLocaleString()}</span>
               </div>
             </div>
@@ -3123,8 +3123,8 @@ const styles = {
   headerSide: { display: "flex", alignItems: "center", gap: 9 },
   headerAvatarBtn: { background: "none", border: "none", padding: 0, display: "flex", flexShrink: 0 },
   headerIconBtn: { position: "relative", background: "none", border: "none", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  teesBadge: { height: 44, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "0 6px", flexShrink: 0 },
-  teesBadgeText: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 14, color: "#FFFFFF" },
+  teesBadge: { height: 44, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "0 4px", flexShrink: 0 },
+  teesBadgeText: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 12, color: "#FFFFFF" },
   headerTitle: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 24, letterSpacing: 0, color: "#FFFFFF", justifySelf: "center", whiteSpace: "nowrap", textShadow: "0 2px 10px rgba(0,0,0,0.25)" },
   headerSearchInput: { flex: 1, background: "rgba(237,230,214,0.08)", border: "none", borderRadius: 9, padding: "9px 12px", color: "#FFFFFF", fontSize: 14 },
   inboxBadge: { position: "absolute", top: -4, right: -4, background: "#C1443A", color: "#FFFFFF", fontSize: 10, fontWeight: 700, borderRadius: 9, minWidth: 17, height: 17, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" },
@@ -3195,7 +3195,7 @@ const styles = {
   cardName: { fontWeight: 700, fontSize: 16.5, color: "#FFFFFF" },
   cardMeta: { fontSize: 13, color: "#9C9990", display: "flex", alignItems: "center", gap: 4, marginTop: 3 },
   noteText: { fontSize: 17, color: "#FFFFFF", marginTop: 8, lineHeight: 1.45, fontWeight: 500 },
-  avatarSm: { width: 36, height: 36, borderRadius: "50%", background: "#4A4844", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12.5, fontWeight: 700, flexShrink: 0 },
+  avatarSm: { width: 36, height: 36, borderRadius: "50%", border: "1.5px solid #74C69D", background: "#4A4844", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12.5, fontWeight: 700, flexShrink: 0, boxSizing: "border-box" },
   postAvatar: { width: 46, height: 46, borderRadius: "50%", border: "1.5px solid #74C69D", overflow: "hidden", background: "#4A4844", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 700, flexShrink: 0 },
   avatarLg: { width: "100%", height: "100%", borderRadius: "50%", background: "#4A4844", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 700 },
   cardActions: { display: "flex", marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)" },
