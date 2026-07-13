@@ -2515,10 +2515,13 @@ function Scorecard({ round }) {
           const d = h.strokes - par;
           return (
             <div key={h.hole} style={styles.scorecardCell}>
-              <span style={styles.scorecardCellNum}>{h.hole}</span>
-              <span style={styles.scorecardCellPar}>Par {par}</span>
-              <div style={styles.scoreMarkSlot}>
-                <ScoreMark score={h.strokes} diff={d} />
+              <span style={styles.scorecardCellNumBadge}>{h.hole}</span>
+              <div style={styles.scorecardCellMain}>
+                <span style={styles.scorecardCellPar}>{par}</span>
+                <div style={styles.scorecardCellDivider} />
+                <div style={styles.scoreMarkSlot}>
+                  <ScoreMark score={h.strokes} diff={d} />
+                </div>
               </div>
             </div>
           );
@@ -3395,17 +3398,19 @@ const styles = {
   scorecardTitle: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 16, color: "#000000" },
   scorecardTeeLine: { fontSize: 12, color: "#6B6963", marginTop: 2 },
   scorecardHoleRow: { display: "flex", gap: 4 },
-  scorecardCell: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", background: "#EDE4CC", borderRadius: 10, padding: "8px 0" },
-  scorecardCellNum: { fontSize: 10.5, color: "#6B6963", fontWeight: 600 },
+  scorecardCell: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 },
+  scorecardCellNumBadge: { width: "100%", textAlign: "center", fontSize: 10.5, color: "#000000", fontWeight: 700, background: "#EDE4CC", borderRadius: 6, padding: "3px 0", boxSizing: "border-box" },
+  scorecardCellMain: { width: "100%", background: "#EDE4CC", borderRadius: 10, padding: "7px 0 8px", display: "flex", flexDirection: "column", alignItems: "center", boxSizing: "border-box" },
   // Same placeholder-par idea as the score-entry grid — real per-course par
   // data will replace PAR_LAYOUT here later. The card's box size is locked
   // (see HANDOFF.md) — this just uses the space that used to sit empty at
   // the bottom, it doesn't grow the card.
-  scorecardCellPar: { fontSize: 8.5, color: "#74C69D", fontWeight: 600, marginTop: 1 },
+  scorecardCellPar: { fontFamily: "'Baloo 2', sans-serif", fontSize: 15, color: "#000000", fontWeight: 800 },
+  scorecardCellDivider: { width: "68%", height: 1, background: "#C9C2AC", margin: "5px 0 1px" },
   scorecardCellScore: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 16, marginTop: 2 },
   scoreMarkRing: { display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 24, height: 24, border: "1.5px solid #000000", boxSizing: "border-box" },
   scoreMarkOuterRing: { minWidth: 30, height: 30, padding: 2 },
-  scoreMarkSlot: { height: 32, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 2 },
+  scoreMarkSlot: { height: 32, display: "flex", alignItems: "center", justifyContent: "center" },
   scorecardDivider: { height: 8 },
   scorecardSummaryRow: { display: "flex", marginTop: 14, paddingTop: 14, borderTop: "1px solid rgba(0,0,0,0.12)" },
   scorecardSummaryItem: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center" },
