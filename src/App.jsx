@@ -820,16 +820,50 @@ export default function App() {
     setShowCreateGroup(false);
   }
 
-  function toggleGroupMembership(id) {
+  // Joining a group now needs the owner's approval — request adds you to
+  // pendingRequests (a name->timestamp map, like follows/likedAt, so it can
+  // also drive a notification), and the owner accepts/declines from there.
+  function requestToJoinGroup(id) {
     markRecentEdit("groups", id);
     updateGroups((prev) =>
       prev.map((g) => {
         if (g.id !== id) return g;
         const members = g.members || [];
-        const already = members.includes(myName);
-        return { ...g, members: already ? members.filter((n) => n !== myName) : [...members, myName] };
+        const pending = g.pendingRequests || {};
+        if (members.includes(myName) || pending[myName]) return g;
+        return { ...g, pendingRequests: { ...pending, [myName]: new Date().toISOString() } };
       })
     );
+  }
+
+  function cancelJoinRequest(id) {
+    markRecentEdit("groups", id);
+    updateGroups((prev) =>
+      prev.map((g) => {
+        if (g.id !== id) return g;
+        const pending = { ...(g.pendingRequests || {}) };
+        delete pending[myName];
+        return { ...g, pendingRequests: pending };
+      })
+    );
+  }
+
+  function respondToGroupRequest(id, name, accept) {
+    markRecentEdit("groups", id);
+    updateGroups((prev) =>
+      prev.map((g) => {
+        if (g.id !== id) return g;
+        const pending = { ...(g.pendingRequests || {}) };
+        delete pending[name];
+        const members = accept ? [...(g.members || []), name] : g.members || [];
+        return { ...g, members, pendingRequests: pending };
+      })
+    );
+  }
+
+  function leaveGroup(id) {
+    markRecentEdit("groups", id);
+    updateGroups((prev) => prev.map((g) => (g.id === id ? { ...g, members: (g.members || []).filter((n) => n !== myName) } : g)));
   }
 
   function deleteGroup(id) {
@@ -1044,11 +1078,12 @@ export default function App() {
 
   const feedPosts = [...posts].sort((a, b) => new Date(b.time) - new Date(a.time));
 
-  // Search finds people (by name), not feed/match content — every account
+  // Search finds people and groups, not feed/match content — every account
   // publishes a `profiles` entry as soon as they sign in (see the effect
   // that saves your own snapshot), so this doubles as a full user directory.
   const q = searchQuery.trim().toLowerCase();
   const userSearchResults = !q ? [] : Object.keys(profiles).filter((n) => n !== myName && n.toLowerCase().includes(q));
+  const groupSearchResults = !q ? [] : groups.filter((g) => g.name.toLowerCase().includes(q));
 
   const pendingCount = inbox.filter((r) => r.status === "pending").length;
 
@@ -1080,9 +1115,15 @@ export default function App() {
       const followedAt = followingMap?.[myName];
       if (followedAt) items.push({ id: `follow:${follower}`, type: "follow", actor: follower, time: followedAt });
     }
+    for (const g of groups) {
+      if (g.createdBy !== myName) continue;
+      for (const [requester, requestedAt] of Object.entries(g.pendingRequests || {})) {
+        items.push({ id: `grouprequest:${g.id}:${requester}`, type: "group_request", groupId: g.id, groupName: g.name, actor: requester, time: requestedAt });
+      }
+    }
     items.sort((a, b) => new Date(b.time) - new Date(a.time));
     return items;
-  }, [feedPosts, follows, myName]);
+  }, [feedPosts, follows, groups, myName]);
   const unseenActivityCount = activityNotifications.filter((n) => !seenActivityIds.includes(n.id)).length;
 
   function openInbox() {
@@ -1163,7 +1204,7 @@ export default function App() {
             </button>
             <input
               style={styles.headerSearchInput}
-              placeholder="Search people…"
+              placeholder="Search people or groups…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               autoFocus
@@ -1205,13 +1246,22 @@ export default function App() {
         {showSearch && searchQuery.trim() ? (
           <UserSearchResults
             results={userSearchResults}
+            groupResults={groupSearchResults}
             profiles={profiles}
+            myName={myName}
             myFollowing={follows[myName] || {}}
             onToggleFollow={toggleFollow}
             onOpenProfile={(name) => {
               setShowSearch(false);
               setSearchQuery("");
               openProfile(name);
+            }}
+            onOpenGroup={(id) => {
+              setShowSearch(false);
+              setSearchQuery("");
+              setTab("match");
+              setMatchSubTab("groups");
+              setViewingGroup(id);
             }}
           />
         ) : (
@@ -1311,7 +1361,7 @@ export default function App() {
 
       <nav style={styles.nav}>
         <NavBtn icon={Landmark} label="Clubhouse" active={tab === "home"} onClick={() => setTab("home")} />
-        <NavBtn icon={Users} label="Matches" active={tab === "match"} onClick={() => setTab("match")} />
+        <NavBtn icon={Users} label="Social" active={tab === "match"} onClick={() => setTab("match")} />
         <CenterNavBtn onClick={() => setShowLogForm(true)} />
         <NavBtn icon={Navigation} label="GPS" active={tab === "gps"} onClick={() => setTab("gps")} />
         <NavBtn icon={User} label="Profile" active={tab === "profile"} onClick={() => setTab("profile")} />
@@ -1350,6 +1400,10 @@ export default function App() {
             setShowInbox(false);
             openProfile(name);
           }}
+          onRespondGroupRequest={(groupId, name, accept, notificationId) => {
+            markActivitySeen(notificationId);
+            respondToGroupRequest(groupId, name, accept);
+          }}
         />
       )}
 
@@ -1363,7 +1417,10 @@ export default function App() {
           myName={myName}
           profiles={profiles}
           onClose={() => setViewingGroup(null)}
-          onToggleMembership={toggleGroupMembership}
+          onRequestJoin={requestToJoinGroup}
+          onCancelRequest={cancelJoinRequest}
+          onLeave={leaveGroup}
+          onRespondRequest={respondToGroupRequest}
           onDelete={deleteGroup}
           onOpenProfile={(name) => {
             setViewingGroup(null);
@@ -2224,17 +2281,18 @@ function FollowListModal({ title, names, profiles, myFollowingMap, myName, onTog
   );
 }
 
-function UserSearchResults({ results, profiles, myFollowing, onToggleFollow, onOpenProfile }) {
-  if (results.length === 0) {
+function UserSearchResults({ results, groupResults = [], profiles, myName, myFollowing, onToggleFollow, onOpenProfile, onOpenGroup }) {
+  if (results.length === 0 && groupResults.length === 0) {
     return (
       <div style={{ ...styles.empty, color: "rgba(255,255,255,0.75)" }}>
-        <p style={{ ...styles.emptyTitle, color: "#FFFFFF" }}>No one found</p>
+        <p style={{ ...styles.emptyTitle, color: "#FFFFFF" }}>Nothing found</p>
         <p style={styles.emptyBody}>Try a different name.</p>
       </div>
     );
   }
   return (
     <div style={styles.tabPad}>
+      {results.length > 0 && <div style={{ ...styles.sectionLabel, color: "#FFFFFF" }}>People</div>}
       {results.map((name) => {
         const profile = profiles[name];
         const isFollowing = !!myFollowing[name];
@@ -2258,6 +2316,25 @@ function UserSearchResults({ results, profiles, myFollowing, onToggleFollow, onO
               {isFollowing ? "Following" : "Follow"}
             </button>
           </div>
+        );
+      })}
+
+      {groupResults.length > 0 && <div style={{ ...styles.sectionLabel, color: "#FFFFFF", marginTop: results.length > 0 ? 8 : 0 }}>Groups</div>}
+      {groupResults.map((g) => {
+        const members = g.members || [];
+        const iJoined = members.includes(myName);
+        return (
+          <button key={g.id} style={styles.groupCard} onClick={() => onOpenGroup(g.id)}>
+            <Avatar photo={g.photo} name={g.name} style={styles.postAvatar} />
+            <div style={{ flex: 1, textAlign: "left" }}>
+              <div style={styles.cardName}>{g.name}</div>
+              <div style={styles.cardMeta}>
+                <Users size={12} color="#9C9990" /> {members.length} {members.length === 1 ? "member" : "members"}
+                {iJoined && <span style={styles.groupJoinedTag}>Joined</span>}
+              </div>
+            </div>
+            <ChevronRight size={16} color="#9C9990" />
+          </button>
         );
       })}
     </div>
@@ -2589,6 +2666,7 @@ function GroupsTab({ groups, myName, profiles, onCreateGroup, onOpenGroup }) {
       {sorted.map((g) => {
         const members = g.members || [];
         const iJoined = members.includes(myName);
+        const iRequested = !!(g.pendingRequests || {})[myName];
         return (
           <button key={g.id} style={styles.groupCard} onClick={() => onOpenGroup(g.id)}>
             <Avatar photo={g.photo} name={g.name} style={styles.postAvatar} />
@@ -2597,6 +2675,7 @@ function GroupsTab({ groups, myName, profiles, onCreateGroup, onOpenGroup }) {
               <div style={styles.cardMeta}>
                 <Users size={12} color="#9C9990" /> {members.length} {members.length === 1 ? "member" : "members"}
                 {iJoined && <span style={styles.groupJoinedTag}>Joined</span>}
+                {!iJoined && iRequested && <span style={{ ...styles.groupJoinedTag, color: "#9C9990" }}>Requested</span>}
               </div>
             </div>
             <ChevronRight size={16} color="#9C9990" />
@@ -2663,11 +2742,27 @@ function CreateGroupModal({ onClose, onSubmit }) {
   );
 }
 
-function GroupDetailModal({ group, myName, profiles, onClose, onToggleMembership, onDelete, onOpenProfile }) {
+function GroupDetailModal({ group, myName, profiles, onClose, onRequestJoin, onCancelRequest, onLeave, onRespondRequest, onDelete, onOpenProfile }) {
   if (!group) return null;
   const members = group.members || [];
+  const pending = group.pendingRequests || {};
+  const pendingNames = Object.keys(pending);
   const iJoined = members.includes(myName);
+  const iRequested = !!pending[myName];
   const isMine = group.createdBy === myName;
+
+  let joinBtnLabel = "Request to join";
+  let joinBtnAction = () => onRequestJoin(group.id);
+  let joinBtnDone = false;
+  if (iJoined) {
+    joinBtnLabel = "Joined";
+    joinBtnAction = () => onLeave(group.id);
+    joinBtnDone = true;
+  } else if (iRequested) {
+    joinBtnLabel = "Requested";
+    joinBtnAction = () => onCancelRequest(group.id);
+    joinBtnDone = true;
+  }
 
   return (
     <div style={styles.modalOverlay} onClick={onClose}>
@@ -2687,10 +2782,36 @@ function GroupDetailModal({ group, myName, profiles, onClose, onToggleMembership
           <div style={styles.profileViewCourse}>
             <Users size={12} color="#9C9990" /> {members.length} {members.length === 1 ? "member" : "members"}
           </div>
-          <button style={{ ...styles.followBtn, ...(iJoined ? styles.followBtnDone : {}) }} onClick={() => onToggleMembership(group.id)}>
-            {iJoined ? "Joined" : "Join group"}
-          </button>
+          {!isMine && (
+            <button style={{ ...styles.followBtn, ...(joinBtnDone ? styles.followBtnDone : {}) }} onClick={joinBtnAction}>
+              {joinBtnLabel}
+            </button>
+          )}
         </div>
+
+        {isMine && pendingNames.length > 0 && (
+          <>
+            <div style={styles.sectionLabel}>Requests to join</div>
+            {pendingNames.map((name) => (
+              <div key={name} style={styles.inboxCard}>
+                <button style={{ ...styles.postAuthorBtn, width: "100%" }} onClick={() => onOpenProfile(name)}>
+                  <Avatar photo={profiles?.[name]?.photo} name={name} style={styles.postAvatar} />
+                  <div style={{ textAlign: "left" }}>
+                    <div style={styles.cardName}>{name}</div>
+                  </div>
+                </button>
+                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                  <button style={styles.declineBtn} onClick={() => onRespondRequest(group.id, name, false)}>
+                    Decline
+                  </button>
+                  <button style={styles.acceptBtn} onClick={() => onRespondRequest(group.id, name, true)}>
+                    <Check size={14} color="#000000" strokeWidth={3} /> Accept
+                  </button>
+                </div>
+              </div>
+            ))}
+          </>
+        )}
 
         <div style={styles.sectionLabel}>Members</div>
         {members.map((name) => (
@@ -2775,7 +2896,7 @@ function MatchComposerModal({ onClose, onSubmit }) {
   );
 }
 
-function InboxModal({ inbox, activity = [], seenActivityIds = [], golfers, myFollowing = {}, onClose, onRespond, onOpenPost, onOpenProfile, onFollowBack }) {
+function InboxModal({ inbox, activity = [], seenActivityIds = [], golfers, myFollowing = {}, onClose, onRespond, onOpenPost, onOpenProfile, onFollowBack, onRespondGroupRequest }) {
   const pending = inbox.filter((r) => r.status === "pending");
   const resolved = inbox.filter((r) => r.status !== "pending");
 
@@ -2796,7 +2917,7 @@ function InboxModal({ inbox, activity = [], seenActivityIds = [], golfers, myFol
         {pending.length === 0 && resolved.length === 0 && activity.length === 0 && (
           <div style={styles.empty}>
             <p style={styles.emptyTitle}>No notifications yet</p>
-            <p style={styles.emptyBody}>Golf claps, comments, new followers, and match requests will show up here.</p>
+            <p style={styles.emptyBody}>Golf claps, comments, new followers, group join requests, and match requests will show up here.</p>
           </div>
         )}
 
@@ -2823,6 +2944,30 @@ function InboxModal({ inbox, activity = [], seenActivityIds = [], golfers, myFol
                 >
                   {alreadyFollowing ? "Following" : "Follow back"}
                 </button>
+              </div>
+            );
+          }
+          if (n.type === "group_request") {
+            return (
+              <div key={n.id} style={styles.activityRow}>
+                {unread && <span style={styles.activityUnreadDot} aria-hidden="true" />}
+                <button style={styles.activityRowClickable} onClick={() => onOpenProfile(n.actor, n.id)}>
+                  <div style={styles.avatarSm}>{initialsOf(n.actor)}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={styles.cardMeta}>
+                      <span style={{ color: "#FFFFFF", fontWeight: 700 }}>{n.actor}</span> wants to join <span style={{ color: "#FFFFFF", fontWeight: 700 }}>{n.groupName}</span>
+                    </div>
+                    <div style={styles.activityTime}>{timeAgo(n.time)}</div>
+                  </div>
+                </button>
+                <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                  <button style={styles.declineBtnSm} onClick={() => onRespondGroupRequest(n.groupId, n.actor, false, n.id)} aria-label="Decline">
+                    <X size={13} color="#C1443A" />
+                  </button>
+                  <button style={styles.followBackBtn} onClick={() => onRespondGroupRequest(n.groupId, n.actor, true, n.id)}>
+                    Accept
+                  </button>
+                </div>
               </div>
             );
           }
@@ -3824,6 +3969,7 @@ const styles = {
   followBackBtnDone: { background: "none", border: "1.5px solid #4A4844", color: "#9C9990" },
   inboxNote: { fontSize: 12.5, color: "#A3A199", marginTop: 5, fontStyle: "italic" },
   declineBtn: { flex: 1, background: "transparent", border: "1.5px solid #74C69D", color: "#A3A199", borderRadius: 8, fontSize: 12.5, fontWeight: 700, padding: "8px 0" },
+  declineBtnSm: { background: "transparent", border: "1.5px solid #4A4844", borderRadius: 999, width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center" },
   acceptBtn: { flex: 1, background: "#74C69D", border: "none", color: "#000000", borderRadius: 8, fontSize: 12.5, fontWeight: 700, padding: "8px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 },
   declinedChip: { background: "rgba(193,68,58,0.12)", color: "#C1443A", fontSize: 11, fontWeight: 700, borderRadius: 7, padding: "5px 10px", border: "1px solid #C1443A" },
   main: { flex: 1, overflowY: "auto", paddingBottom: 90 },
