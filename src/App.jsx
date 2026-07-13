@@ -3397,16 +3397,16 @@ const styles = {
   scorecardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, padding: "0 2px" },
   scorecardTitle: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 16, color: "#000000" },
   scorecardTeeLine: { fontSize: 12, color: "#6B6963", marginTop: 2 },
-  scorecardHoleRow: { display: "flex", gap: 4 },
-  scorecardCell: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 },
-  scorecardCellNumBadge: { width: "100%", textAlign: "center", fontSize: 10.5, color: "#000000", fontWeight: 700, background: "#EDE4CC", border: "1.5px solid #74C69D", borderRadius: 6, padding: "3px 0", boxSizing: "border-box" },
-  scorecardCellMain: { width: "100%", background: "#EDE4CC", border: "1.5px solid #74C69D", borderRadius: 10, padding: "7px 0 8px", display: "flex", flexDirection: "column", alignItems: "center", boxSizing: "border-box" },
+  scorecardHoleRow: { display: "flex", gap: 7 },
+  scorecardCell: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 },
+  scorecardCellNumBadge: { width: "100%", textAlign: "center", fontSize: 10.5, color: "#000000", fontWeight: 700, background: "#EDE4CC", border: "1.5px solid #74C69D", borderRadius: 6, padding: "4px 0", boxSizing: "border-box" },
+  scorecardCellMain: { width: "100%", background: "#EDE4CC", border: "1.5px solid #74C69D", borderRadius: 10, padding: "10px 0 12px", display: "flex", flexDirection: "column", alignItems: "center", boxSizing: "border-box" },
   // Same placeholder-par idea as the score-entry grid — real per-course par
   // data will replace PAR_LAYOUT here later. The card's box size is locked
   // (see HANDOFF.md) — this just uses the space that used to sit empty at
   // the bottom, it doesn't grow the card.
   scorecardCellPar: { fontFamily: "'Baloo 2', sans-serif", fontSize: 15, color: "#000000", fontWeight: 800 },
-  scorecardCellDivider: { width: "68%", height: 1, background: "#C9C2AC", margin: "5px 0 1px" },
+  scorecardCellDivider: { width: "68%", height: 1, background: "#C9C2AC", margin: "8px 0 6px" },
   scorecardCellScore: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 16, marginTop: 2 },
   scoreMarkRing: { display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 24, height: 24, border: "1.5px solid #000000", boxSizing: "border-box" },
   scoreMarkOuterRing: { minWidth: 30, height: 30, padding: 2 },
