@@ -557,6 +557,7 @@ export default function App() {
   const [requested, setRequested] = useState({});
   const [inbox, setInbox] = useState(seedInbox);
   const [showInbox, setShowInbox] = useState(false);
+  const [seenActivityIds, setSeenActivityIds] = useState(() => loadPersonal("sticktalk:seen-notifications", []));
   const [showComposer, setShowComposer] = useState(false);
   const [commentsFor, setCommentsFor] = useState(null); // postId
   const [likersFor, setLikersFor] = useState(null); // postId
@@ -956,6 +957,38 @@ export default function App() {
 
   const pendingCount = inbox.filter((r) => r.status === "pending").length;
 
+  // Golf-clap and comment notifications, derived from the feed itself rather
+  // than a separate stored notifications table — anyone who claps/comments
+  // on one of my posts (other than me) shows up here, most recent post first.
+  const activityNotifications = useMemo(() => {
+    if (!myName) return [];
+    const items = [];
+    for (const p of feedPosts) {
+      if (p.author !== myName) continue;
+      for (const liker of p.likedBy || []) {
+        if (liker === myName) continue;
+        items.push({ id: `like:${p.id}:${liker}`, type: "like", postId: p.id, actor: liker });
+      }
+      for (const c of p.comments || []) {
+        if (c.author === myName) continue;
+        items.push({ id: `comment:${p.id}:${c.id}`, type: "comment", postId: p.id, actor: c.author, text: c.text });
+      }
+    }
+    return items;
+  }, [feedPosts, myName]);
+  const unseenActivityCount = activityNotifications.filter((n) => !seenActivityIds.includes(n.id)).length;
+
+  function openInbox() {
+    setShowInbox(true);
+    const ids = activityNotifications.map((n) => n.id);
+    if (ids.length === 0) return;
+    setSeenActivityIds((prev) => {
+      const next = Array.from(new Set([...prev, ...ids]));
+      savePersonal("sticktalk:seen-notifications", next);
+      return next;
+    });
+  }
+
   if (session === undefined || (session && (!dataLoaded || !nameLoaded))) {
     return (
       <div style={{ ...styles.app, alignItems: "center", justifyContent: "center" }}>
@@ -1048,9 +1081,9 @@ export default function App() {
                   <Search size={19} color="#FFFFFF" />
                 </button>
               )}
-              <button style={styles.headerIconBtn} onClick={() => setShowInbox(true)} aria-label="Notifications">
+              <button style={styles.headerIconBtn} onClick={openInbox} aria-label="Notifications">
                 <Bell size={19} color="#FFFFFF" />
-                {pendingCount > 0 && <span style={styles.inboxBadge}>{pendingCount}</span>}
+                {pendingCount + unseenActivityCount > 0 && <span style={styles.inboxBadge}>{pendingCount + unseenActivityCount}</span>}
               </button>
             </div>
           </div>
@@ -1140,9 +1173,14 @@ export default function App() {
       {showInbox && (
         <InboxModal
           inbox={inbox}
+          activity={activityNotifications}
           golfers={golfers}
           onClose={() => setShowInbox(false)}
           onRespond={respondToInbox}
+          onOpenPost={(postId) => {
+            setShowInbox(false);
+            setViewingPost(postId);
+          }}
         />
       )}
 
@@ -2184,7 +2222,7 @@ function MatchComposerModal({ onClose, onSubmit }) {
   );
 }
 
-function InboxModal({ inbox, golfers, onClose, onRespond }) {
+function InboxModal({ inbox, activity = [], golfers, onClose, onRespond, onOpenPost }) {
   const pending = inbox.filter((r) => r.status === "pending");
   const resolved = inbox.filter((r) => r.status !== "pending");
 
@@ -2196,18 +2234,37 @@ function InboxModal({ inbox, golfers, onClose, onRespond }) {
     <div style={styles.modalOverlay} onClick={onClose}>
       <div style={{ ...styles.modal, maxHeight: "82vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
         <div style={styles.modalHead}>
-          <span style={styles.modalTitle}>Match requests</span>
+          <span style={styles.modalTitle}>Notifications</span>
           <button style={styles.iconBtn} onClick={onClose} aria-label="Close">
             <X size={18} color="#FFFFFF" />
           </button>
         </div>
 
-        {pending.length === 0 && resolved.length === 0 && (
+        {pending.length === 0 && resolved.length === 0 && activity.length === 0 && (
           <div style={styles.empty}>
-            <p style={styles.emptyTitle}>No requests yet</p>
-            <p style={styles.emptyBody}>When someone wants to play you, it'll show up here.</p>
+            <p style={styles.emptyTitle}>No notifications yet</p>
+            <p style={styles.emptyBody}>Golf claps, comments, and match requests will show up here.</p>
           </div>
         )}
+
+        {activity.length > 0 && <div style={styles.sectionLabel}>Activity</div>}
+        {activity.map((n) => (
+          <button key={n.id} style={styles.activityRow} onClick={() => onOpenPost(n.postId)}>
+            <div style={styles.avatarSm}>{initialsOf(n.actor)}</div>
+            <div style={{ flex: 1 }}>
+              {n.type === "like" ? (
+                <div style={styles.cardMeta}>
+                  <span style={{ color: "#FFFFFF", fontWeight: 700 }}>{n.actor}</span> gave you a golf clap 👏
+                </div>
+              ) : (
+                <div style={styles.cardMeta}>
+                  <span style={{ color: "#FFFFFF", fontWeight: 700 }}>{n.actor}</span> commented: "{n.text}"
+                </div>
+              )}
+            </div>
+            <ChevronRight size={16} color="#9C9990" />
+          </button>
+        ))}
 
         {pending.length > 0 && <div style={styles.sectionLabel}>Pending</div>}
         {pending.map((r) => {
@@ -3129,6 +3186,7 @@ const styles = {
   headerSearchInput: { flex: 1, background: "rgba(237,230,214,0.08)", border: "none", borderRadius: 9, padding: "9px 12px", color: "#FFFFFF", fontSize: 14 },
   inboxBadge: { position: "absolute", top: -4, right: -4, background: "#C1443A", color: "#FFFFFF", fontSize: 10, fontWeight: 700, borderRadius: 9, minWidth: 17, height: 17, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" },
   inboxCard: { background: "#232220", border: "1.5px solid #74C69D", borderRadius: 14, padding: 13, marginBottom: 10 },
+  activityRow: { display: "flex", alignItems: "center", gap: 10, width: "100%", background: "#232220", border: "1.5px solid #74C69D", borderRadius: 14, padding: 13, marginBottom: 10, textAlign: "left" },
   inboxNote: { fontSize: 12.5, color: "#A3A199", marginTop: 5, fontStyle: "italic" },
   declineBtn: { flex: 1, background: "transparent", border: "1.5px solid #74C69D", color: "#A3A199", borderRadius: 8, fontSize: 12.5, fontWeight: 700, padding: "8px 0" },
   acceptBtn: { flex: 1, background: "#74C69D", border: "none", color: "#000000", borderRadius: 8, fontSize: 12.5, fontWeight: 700, padding: "8px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 },
