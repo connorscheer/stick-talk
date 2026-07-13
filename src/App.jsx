@@ -1182,17 +1182,48 @@ function PostCard({ post: p, onLike, onOpenComments, onOpenLikers, onDelete, myN
 
       {p.text && <div style={styles.noteText}>{p.text}</div>}
 
-      {p.kind === "round" && (
-        <div style={styles.postScorecardWrap}>
-          <Scorecard round={p.round} />
-        </div>
-      )}
+      {(() => {
+        const images = p.images || [];
+        const hasScorecard = p.kind === "round";
+        const itemCount = (hasScorecard ? 1 : 0) + images.length;
+        const photoAlt = p.kind === "round" ? `${p.author}'s round at ${p.round.course}` : `Photo shared by ${p.author}`;
 
-      {p.images && p.images.length > 0 && (
-        <div style={styles.postImageWrap}>
-          <PhotoTile src={p.images[0]} style={{ width: "100%", aspectRatio: "4 / 3", borderRadius: 18, border: "1.5px solid #74C69D" }} alt={p.kind === "round" ? `${p.author}'s round at ${p.round.course}` : `Photo shared by ${p.author}`} />
-        </div>
-      )}
+        if (itemCount === 0) return null;
+
+        // A single item (just a scorecard, or just one photo) renders inline
+        // like before. Two or more items become a horizontal swipeable strip
+        // instead of stacking vertically, so a round + photos reads like one
+        // scrollable "carousel" rather than a long scroll of separate blocks.
+        if (itemCount === 1) {
+          if (hasScorecard) {
+            return (
+              <div style={styles.postScorecardWrap}>
+                <Scorecard round={p.round} />
+              </div>
+            );
+          }
+          return (
+            <div style={styles.postImageWrap}>
+              <PhotoTile src={images[0]} style={{ width: "100%", aspectRatio: "4 / 3", borderRadius: 18, border: "1.5px solid #74C69D" }} alt={photoAlt} />
+            </div>
+          );
+        }
+
+        return (
+          <div style={styles.postMediaScroll}>
+            {hasScorecard && (
+              <div style={styles.postMediaScrollItem}>
+                <Scorecard round={p.round} />
+              </div>
+            )}
+            {images.map((src, i) => (
+              <div key={i} style={styles.postMediaScrollItem}>
+                <PhotoTile src={src} style={{ width: "100%", height: "100%", aspectRatio: "4 / 3", borderRadius: 18, border: "1.5px solid #74C69D" }} alt={`${photoAlt} (${i + 1}/${images.length})`} />
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       {likedBy.length === 0 ? (
         <div style={styles.socialLine}>Be the first to give a golf clap!</div>
@@ -2617,15 +2648,15 @@ function BackAndSubmit({ onBack, onSubmit, disabled, label = "Save round" }) {
 // ---------- Styles ----------
 const styles = {
   loadingSpinner: { width: 34, height: 34, borderRadius: "50%", border: "3px solid #E4E1D8", borderTopColor: "#74C69D", animation: "spin 0.8s linear infinite" },
-  nameGateWrap: { minHeight: "100vh", maxWidth: 420, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 28px", backgroundColor: "#6B6D70", ...BG_TEXTURE, textAlign: "center", fontFamily: "'Baloo 2', sans-serif" },
-  nameGateFlag: { width: 52, height: 52, borderRadius: 16, background: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14, boxShadow: "0 4px 14px rgba(0,0,0,0.12)" },
-  nameGateWordmark: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 24, letterSpacing: 0, color: "#FFFFFF", marginBottom: 6 },
-  nameGateCopy: { fontSize: 14, color: "rgba(255,255,255,0.8)", marginBottom: 18 },
+  nameGateWrap: { minHeight: "100vh", maxWidth: 420, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 28px", backgroundColor: "#FFFFFF", ...BG_TEXTURE, textAlign: "center", fontFamily: "'Baloo 2', sans-serif" },
+  nameGateFlag: { width: 52, height: 52, borderRadius: 16, background: "#FFFFFF", border: "1.5px solid #74C69D", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14, boxShadow: "0 4px 14px rgba(0,0,0,0.1)" },
+  nameGateWordmark: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 24, letterSpacing: 0, color: "#232220", marginBottom: 6 },
+  nameGateCopy: { fontSize: 14, color: "rgba(35,34,32,0.72)", marginBottom: 18 },
   nameGateInput: { width: "100%", background: "#F4F5F1", border: "1px solid #D8DCD3", borderRadius: 10, padding: "12px 14px", fontSize: 15, color: "#000000", marginBottom: 14, textAlign: "center" },
-  nameGateFoot: { fontSize: 11.5, color: "rgba(255,255,255,0.72)", marginTop: 18, lineHeight: 1.5 },
+  nameGateFoot: { fontSize: 11.5, color: "rgba(35,34,32,0.6)", marginTop: 18, lineHeight: 1.5 },
   app: {
     fontFamily: "'Baloo 2', sans-serif",
-    backgroundColor: "#6B6D70",
+    backgroundColor: "#FFFFFF",
     ...BG_TEXTURE,
     minHeight: "100vh",
     maxWidth: 420,
@@ -2907,6 +2938,8 @@ const styles = {
   switchThumb: { width: 18, height: 18, borderRadius: "50%", background: "#EDE6D6", transition: "transform 0.15s ease" },
   postImageWrap: { marginTop: 10 },
   postScorecardWrap: {},
+  postMediaScroll: { display: "flex", gap: 10, overflowX: "auto", scrollSnapType: "x mandatory", marginTop: 10, paddingBottom: 2 },
+  postMediaScrollItem: { flex: "0 0 100%", scrollSnapAlign: "start" },
   scorecardWrap: { background: "#F5EFDD", border: "1.5px solid #74C69D", borderRadius: 18, padding: "16px 14px", marginTop: 12 },
   scorecardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, padding: "0 2px" },
   scorecardTitle: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 16, color: "#000000" },
