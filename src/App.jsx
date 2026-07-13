@@ -1000,6 +1000,9 @@ export default function App() {
 
   const pendingCount = inbox.filter((r) => r.status === "pending").length;
 
+  const myFollowing = Object.keys(follows[myName] || {});
+  const myFollowers = Object.keys(follows).filter((n) => n !== myName && follows[n]?.[myName]);
+
   // Golf-clap, comment, and follow notifications, derived from the feed +
   // follows data rather than a separate stored notifications table —
   // anyone who claps/comments on one of my posts, or starts following me,
@@ -1215,6 +1218,12 @@ export default function App() {
             onLogOut={logOut}
             myPhoto={myPhoto}
             onSavePhoto={saveMyPhoto}
+            followers={myFollowers}
+            following={myFollowing}
+            profiles={profiles}
+            myFollowingMap={follows[myName] || {}}
+            onToggleFollow={toggleFollow}
+            onOpenProfile={openProfile}
           />
         )}
           </>
@@ -1317,6 +1326,13 @@ export default function App() {
           isMine={viewingProfile === myName}
           isFollowing={!!(follows[myName] || {})[viewingProfile]}
           onToggleFollow={() => toggleFollow(viewingProfile)}
+          followers={Object.keys(follows).filter((n) => n !== viewingProfile && follows[n]?.[viewingProfile])}
+          following={Object.keys(follows[viewingProfile] || {})}
+          profiles={profiles}
+          myFollowingMap={follows[myName] || {}}
+          myName={myName}
+          onToggleFollowInList={toggleFollow}
+          onOpenProfile={openProfile}
           onClose={() => setViewingProfile(null)}
         />
       )}
@@ -2060,6 +2076,58 @@ function LikersModal({ post, onClose, onOpenProfile }) {
   );
 }
 
+function FollowListModal({ title, names, profiles, myFollowingMap, myName, onToggleFollow, onOpenProfile, onClose }) {
+  return (
+    <div style={styles.modalOverlay} onClick={onClose}>
+      <div style={{ ...styles.modal, maxHeight: "78vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+        <div style={styles.modalHead}>
+          <span style={styles.modalTitle}>{title}</span>
+          <button style={styles.iconBtn} onClick={onClose} aria-label="Close">
+            <X size={18} color="#FFFFFF" />
+          </button>
+        </div>
+
+        {names.length === 0 && (
+          <div style={styles.empty}>
+            <p style={styles.emptyTitle}>{title === "Followers" ? "No followers yet" : "Not following anyone yet"}</p>
+            <p style={styles.emptyBody}>
+              {title === "Followers" ? "When someone follows you, they'll show up here." : "Search for people to follow them."}
+            </p>
+          </div>
+        )}
+
+        {names.map((name) => {
+          const profile = profiles[name];
+          const isFollowing = !!myFollowingMap[name];
+          return (
+            <div key={name} style={styles.followListRow}>
+              <button style={styles.postAuthorBtn} onClick={() => onOpenProfile(name)}>
+                <Avatar photo={profile?.photo} name={name} style={styles.postAvatar} />
+                <div style={{ textAlign: "left" }}>
+                  <div style={styles.cardName}>{name}</div>
+                  {profile?.homeCourse && (
+                    <div style={styles.cardMeta}>
+                      <MapPin size={12} color="#9C9990" /> {profile.homeCourse}
+                    </div>
+                  )}
+                </div>
+              </button>
+              {name !== myName && (
+                <button
+                  style={{ ...styles.followBackBtn, ...(isFollowing ? styles.followBackBtnDone : {}) }}
+                  onClick={() => onToggleFollow(name)}
+                >
+                  {isFollowing ? "Following" : "Follow"}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function UserSearchResults({ results, profiles, myFollowing, onToggleFollow, onOpenProfile }) {
   if (results.length === 0) {
     return (
@@ -2100,7 +2168,22 @@ function UserSearchResults({ results, profiles, myFollowing, onToggleFollow, onO
   );
 }
 
-function ProfileViewModal({ name, profile, isMine, isFollowing, onToggleFollow, onClose }) {
+function ProfileViewModal({
+  name,
+  profile,
+  isMine,
+  isFollowing,
+  onToggleFollow,
+  followers = [],
+  following = [],
+  profiles = {},
+  myFollowingMap = {},
+  myName,
+  onToggleFollowInList,
+  onOpenProfile,
+  onClose,
+}) {
+  const [followListView, setFollowListView] = useState(null); // "followers" | "following" | null
   return (
     <div style={styles.modalOverlay} onClick={onClose}>
       <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -2123,6 +2206,14 @@ function ProfileViewModal({ name, profile, isMine, isFollowing, onToggleFollow, 
               <MapPin size={12} color="#9C9990" /> {profile.homeCourse}
             </div>
           )}
+          <div style={styles.followCountsRow}>
+            <button style={styles.followCountsBtn} onClick={() => setFollowListView("followers")}>
+              <span style={styles.followCountsNum}>{followers.length}</span> Followers
+            </button>
+            <button style={styles.followCountsBtn} onClick={() => setFollowListView("following")}>
+              <span style={styles.followCountsNum}>{following.length}</span> Following
+            </button>
+          </div>
           {!isMine && (
             <button
               style={{ ...styles.followBtn, ...(isFollowing ? styles.followBtnDone : {}) }}
@@ -2132,6 +2223,22 @@ function ProfileViewModal({ name, profile, isMine, isFollowing, onToggleFollow, 
             </button>
           )}
         </div>
+
+        {followListView && (
+          <FollowListModal
+            title={followListView === "followers" ? "Followers" : "Following"}
+            names={followListView === "followers" ? followers : following}
+            profiles={profiles}
+            myFollowingMap={myFollowingMap}
+            myName={myName}
+            onToggleFollow={onToggleFollowInList}
+            onOpenProfile={(n) => {
+              setFollowListView(null);
+              onOpenProfile(n);
+            }}
+            onClose={() => setFollowListView(null)}
+          />
+        )}
 
         {profile ? (
           <>
@@ -2547,10 +2654,34 @@ function InboxModal({ inbox, activity = [], seenActivityIds = [], golfers, myFol
   );
 }
 
-function ProfileTab({ myName, myInitials, currentHandicap, avgScore, bestRound, roundsCount, ghinStatus, ghinNumber, ghinHandicap, onConnectGhin, homeCourse, onSaveHomeCourse, trendData, onLogOut, myPhoto, onSavePhoto }) {
+function ProfileTab({
+  myName,
+  myInitials,
+  currentHandicap,
+  avgScore,
+  bestRound,
+  roundsCount,
+  ghinStatus,
+  ghinNumber,
+  ghinHandicap,
+  onConnectGhin,
+  homeCourse,
+  onSaveHomeCourse,
+  trendData,
+  onLogOut,
+  myPhoto,
+  onSavePhoto,
+  followers,
+  following,
+  profiles,
+  myFollowingMap,
+  onToggleFollow,
+  onOpenProfile,
+}) {
   const [editingCourse, setEditingCourse] = useState(false);
   const [courseDraft, setCourseDraft] = useState(homeCourse || "");
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [followListView, setFollowListView] = useState(null); // "followers" | "following" | null
   const photoInputRef = useRef(null);
 
   function saveCourse() {
@@ -2609,7 +2740,32 @@ function ProfileTab({ myName, myInitials, currentHandicap, avgScore, bestRound, 
             <MapPin size={12} color="rgba(255,255,255,0.78)" /> {homeCourse || "Add your home course"}
           </button>
         )}
+
+        <div style={styles.followCountsRow}>
+          <button style={styles.followCountsBtn} onClick={() => setFollowListView("followers")}>
+            <span style={styles.followCountsNum}>{followers.length}</span> Followers
+          </button>
+          <button style={styles.followCountsBtn} onClick={() => setFollowListView("following")}>
+            <span style={styles.followCountsNum}>{following.length}</span> Following
+          </button>
+        </div>
       </div>
+
+      {followListView && (
+        <FollowListModal
+          title={followListView === "followers" ? "Followers" : "Following"}
+          names={followListView === "followers" ? followers : following}
+          profiles={profiles}
+          myFollowingMap={myFollowingMap}
+          myName={myName}
+          onToggleFollow={onToggleFollow}
+          onOpenProfile={(name) => {
+            setFollowListView(null);
+            onOpenProfile(name);
+          }}
+          onClose={() => setFollowListView(null)}
+        />
+      )}
 
       <div style={styles.stampWrap}>
         <div style={styles.stamp}>
@@ -3482,6 +3638,10 @@ const styles = {
   cardTopRow: { display: "flex", alignItems: "center", gap: 12 },
   postAuthorBtn: { display: "flex", alignItems: "center", gap: 12, flex: 1, background: "none", border: "none", padding: 0, textAlign: "left" },
   homeCourseDisplayBtn: { display: "flex", alignItems: "center", gap: 5, background: "none", border: "none", padding: 0, fontSize: 13, color: "rgba(255,255,255,0.75)", margin: "0 auto" },
+  followCountsRow: { display: "flex", justifyContent: "center", gap: 22, marginTop: 12 },
+  followCountsBtn: { background: "none", border: "none", padding: 0, fontSize: 13.5, color: "rgba(255,255,255,0.75)", fontWeight: 600 },
+  followCountsNum: { color: "#FFFFFF", fontWeight: 800 },
+  followListRow: { display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", padding: "10px 0" },
   homeCourseEditRow: { display: "flex", alignItems: "center", gap: 6, marginTop: 2 },
   homeCourseInput: { background: "#F4F5F1", border: "1px solid #D8DCD3", borderRadius: 8, padding: "6px 10px", fontSize: 13, color: "#000000", textAlign: "center" },
   homeCourseSaveBtn: { width: 26, height: 26, borderRadius: "50%", background: "#74C69D", border: "none", display: "flex", alignItems: "center", justifyContent: "center" },
