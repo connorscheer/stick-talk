@@ -3197,7 +3197,12 @@ const styles = {
   switchThumb: { width: 18, height: 18, borderRadius: "50%", background: "#EDE6D6", transition: "transform 0.15s ease" },
   postImageWrap: { marginTop: 10 },
   postScorecardWrap: { marginTop: 10 },
-  postMediaScroll: { display: "flex", alignItems: "flex-start", gap: 10, overflowX: "auto", overflowY: "hidden", touchAction: "pan-x", overscrollBehaviorY: "contain", scrollSnapType: "x mandatory", scrollbarWidth: "none", msOverflowStyle: "none", marginTop: 10 },
+  // touchAction "pan-x" alone blocks vertical panning entirely for any touch
+  // that starts on the carousel, which froze the whole page's scroll while a
+  // thumb was resting on a photo/scorecard. "pan-x pan-y" lets the browser's
+  // normal gesture-direction detection decide: a mostly-horizontal drag
+  // scrolls the carousel, a mostly-vertical drag scrolls the page.
+  postMediaScroll: { display: "flex", alignItems: "flex-start", gap: 10, overflowX: "auto", overflowY: "hidden", touchAction: "pan-x pan-y", overscrollBehaviorY: "contain", scrollSnapType: "x mandatory", scrollbarWidth: "none", msOverflowStyle: "none", marginTop: 10 },
   postMediaScrollItem: { flex: "0 0 100%", scrollSnapAlign: "start" },
   postMediaDots: { display: "flex", justifyContent: "center", gap: 6, marginTop: 8 },
   postMediaDot: { width: 6, height: 6, borderRadius: "50%" },
