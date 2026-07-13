@@ -1027,7 +1027,7 @@ export default function App() {
               )}
             </div>
             <span style={styles.headerTitle}>
-              {tab === "home" && "Clubhouse"}
+              {tab === "home" && <StickTalkWordmark />}
               {tab === "match" && "Matches"}
               {tab === "gps" && "GPS"}
               {tab === "profile" && "Profile"}
@@ -1239,9 +1239,7 @@ function HomeTab({
         <ImageIcon size={17} color="#74C69D" />
       </button>
 
-      <div style={{ marginLeft: 14, marginBottom: 2 }}>
-        <StickTalkWordmark />
-      </div>
+      <div style={{ ...styles.sectionLabel, color: "#FFFFFF", fontSize: 14, marginLeft: 14 }}>Clubhouse feed</div>
 
       {posts.length === 0 && (
         <div style={{ ...styles.empty, color: "rgba(255,255,255,0.75)" }}>
