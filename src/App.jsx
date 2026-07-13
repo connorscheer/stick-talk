@@ -3412,7 +3412,7 @@ const styles = {
   scoreMarkOuterRing: { minWidth: 30, height: 30, padding: 2 },
   scoreMarkSlot: { height: 32, display: "flex", alignItems: "center", justifyContent: "center" },
   scorecardDivider: { width: "100%", height: 1, background: "#C9C2AC", margin: "16px 0", flexShrink: 0 },
-  scorecardSummaryRow: { display: "flex", marginTop: 14, paddingTop: 14, borderTop: "1px solid rgba(0,0,0,0.12)" },
+  scorecardSummaryRow: { display: "flex", marginTop: 14, paddingTop: 14 },
   scorecardSummaryItem: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center" },
   scorecardSummaryLabel: { fontSize: 10.5, color: "#6B6963", fontWeight: 700, letterSpacing: 0.5 },
   scorecardSummaryValue: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 24, color: "#000000", marginTop: 3 },
