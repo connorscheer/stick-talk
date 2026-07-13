@@ -1414,7 +1414,6 @@ function MatchConfirmedTile({ post }) {
 // more than one item — dot indicators replace the native scrollbar, and
 // scrolling is locked to horizontal so a vertical swipe on mobile scrolls the
 // feed instead of fighting with the carousel.
-const ZOOM_STEPS = [1, 1.8, 2.6];
 // Fullscreen post viewer: media gets a bounded height instead of stretching
 // to fill the whole screen, so author/actions/reply sit below it in normal
 // document flow (Twitter-style) rather than floating on top of the image.
@@ -1430,7 +1429,10 @@ const MEDIA_BOX_HEIGHT = 400;
 function PostMedia({ post: p, large, onOpen }) {
   const [active, setActive] = useState(0);
   const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
   const scrollRef = useRef(null);
+  const pinchRef = useRef(null); // { startDist, startZoom } while 2 fingers are down
+  const dragRef = useRef(null); // { startX, startY, startPanX, startPanY } while panning a zoomed image
   const images = p.images || [];
   const hasScorecard = p.kind === "round";
   const itemCount = (hasScorecard ? 1 : 0) + images.length;
@@ -1440,28 +1442,60 @@ function PostMedia({ post: p, large, onOpen }) {
   // whenever the user swipes to a different photo/scorecard.
   useEffect(() => {
     setZoom(1);
+    setPan({ x: 0, y: 0 });
   }, [active]);
 
   if (itemCount === 0) return null;
 
-  function cycleZoom() {
-    setZoom((z) => ZOOM_STEPS[(ZOOM_STEPS.indexOf(z) + 1) % ZOOM_STEPS.length]);
+  function pinchDistance(touches) {
+    const [a, b] = touches;
+    return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
   }
 
-  // In the fullscreen viewer, tapping cycles through zoom levels instead of
-  // opening anything further, and CSS transforms make an overflow:auto box
-  // pannable by drag/scroll once the content is bigger than the box.
-  // touchAction "pan-x pan-y" (no "pinch-zoom") stops iOS/Android from
-  // handing a 2-finger pinch here to the browser's native page zoom — which
-  // would otherwise zoom the whole screen (comments, golf clap, everything)
-  // instead of just this media box. Tap-to-cycle stays the only zoom.
+  function resetZoom() {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  }
+
+  // Real two-finger pinch-to-zoom on the media itself, with single-finger
+  // pan once zoomed in. touchAction "none" + preventDefault keep the
+  // gesture entirely local to this box — it never bubbles up to the
+  // browser's native page pinch-zoom (which would otherwise scale the
+  // whole screen, comments/actions included) or to any scrollable ancestor.
+  function handleTouchStart(e) {
+    if (e.touches.length === 2) {
+      pinchRef.current = { startDist: pinchDistance(e.touches), startZoom: zoom };
+    } else if (e.touches.length === 1 && zoom > 1) {
+      dragRef.current = { startX: e.touches[0].clientX, startY: e.touches[0].clientY, startPanX: pan.x, startPanY: pan.y };
+    }
+  }
+  function handleTouchMove(e) {
+    if (e.touches.length === 2 && pinchRef.current) {
+      e.preventDefault();
+      const scale = pinchRef.current.startZoom * (pinchDistance(e.touches) / pinchRef.current.startDist);
+      setZoom(Math.max(1, Math.min(4, scale)));
+    } else if (e.touches.length === 1 && dragRef.current) {
+      e.preventDefault();
+      setPan({
+        x: dragRef.current.startPanX + (e.touches[0].clientX - dragRef.current.startX),
+        y: dragRef.current.startPanY + (e.touches[0].clientY - dragRef.current.startY),
+      });
+    }
+  }
+  function handleTouchEnd(e) {
+    if (e.touches.length < 2) pinchRef.current = null;
+    if (e.touches.length < 1) dragRef.current = null;
+    setZoom((z) => (z < 1.05 ? (setPan({ x: 0, y: 0 }), 1) : z));
+  }
+
   const boxStyle = large
-    ? { width: "100%", height: "100%", overflow: "auto", scrollbarWidth: "none", msOverflowStyle: "none", touchAction: "pan-x pan-y", cursor: zoom === ZOOM_STEPS[ZOOM_STEPS.length - 1] ? "zoom-out" : "zoom-in" }
+    ? { width: "100%", height: "100%", overflow: "hidden", touchAction: "none" }
     : { width: "100%", height: MEDIA_BOX_HEIGHT, overflow: "hidden" };
   // In the fullscreen viewer the media gets a bounded height (not the whole
   // screen) so the author/actions/reply bar below it sit in normal document
   // flow instead of floating on top of the image.
   const wrapStyle = large ? { width: "100%", height: MEDIA_LARGE_HEIGHT, display: "flex", flexDirection: "column", margin: 0, flexShrink: 0 } : undefined;
+  const isGesturing = pinchRef.current || dragRef.current;
 
   function Item({ children }) {
     if (!large) {
@@ -1472,8 +1506,22 @@ function PostMedia({ post: p, large, onOpen }) {
       );
     }
     return (
-      <div style={boxStyle} onClick={cycleZoom}>
-        <div style={{ width: "100%", height: "100%", transform: `scale(${zoom})`, transformOrigin: "center center", transition: "transform 0.2s cubic-bezier(0.77, 0, 0.175, 1)" }}>
+      <div
+        style={boxStyle}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onClick={() => zoom > 1 && resetZoom()}
+      >
+        <div
+          style={{
+            width: "100%",
+            height: "100%",
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+            transformOrigin: "center center",
+            transition: isGesturing ? "none" : "transform 0.2s cubic-bezier(0.77, 0, 0.175, 1)",
+          }}
+        >
           {children}
         </div>
       </div>
@@ -1482,11 +1530,12 @@ function PostMedia({ post: p, large, onOpen }) {
 
   if (itemCount === 1) {
     if (hasScorecard) {
+      // Scorecards aren't zoomable and don't need the fixed-height box —
+      // they render at their natural height so nothing is ever clipped;
+      // the body content below just scrolls independently if it runs long.
       return (
-        <div style={{ ...styles.postScorecardWrap, ...wrapStyle }}>
-          <Item>
-            <Scorecard round={p.round} large={large} />
-          </Item>
+        <div style={large ? styles.postScorecardWrapLarge : styles.postScorecardWrap}>
+          <Scorecard round={p.round} large={large} />
         </div>
       );
     }
@@ -2639,7 +2688,7 @@ function Scorecard({ round, large }) {
   }
 
   return (
-    <div style={{ ...styles.scorecardWrap, ...(large ? { height: "auto", minHeight: "100%" } : {}) }}>
+    <div style={{ ...styles.scorecardWrap, ...(large ? { height: "auto" } : {}) }}>
       <div style={styles.scorecardTop}>
         <div>
           <div style={styles.scorecardTitle}>{round.course}</div>
@@ -3366,7 +3415,7 @@ const styles = {
   ghinModalCopy: { fontSize: 13, color: "#A3A199", lineHeight: 1.5, marginBottom: 14 },
   settingsRow: { width: "100%", background: "#232220", border: "1.5px solid #74C69D", borderRadius: 10, padding: "13px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", color: "#FFFFFF", fontSize: 13.5, marginBottom: 8 },
   modalOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", zIndex: 10, animation: "overlayIn 200ms cubic-bezier(0.23, 1, 0.32, 1) both" },
-  postViewerOverlay: { position: "fixed", inset: 0, background: "#000000", zIndex: 20, display: "flex", flexDirection: "column", fontFamily: "'Baloo 2', sans-serif" },
+  postViewerOverlay: { position: "fixed", inset: 0, background: "#000000", zIndex: 20, display: "flex", flexDirection: "column", overflowY: "auto", fontFamily: "'Baloo 2', sans-serif" },
   postViewerMediaWrap: { display: "flex", flexDirection: "column", flexShrink: 0 },
   postViewerTop: { flexShrink: 0, background: "#000000", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px" },
   postViewerIconBtn: { background: "none", border: "none", borderRadius: "50%", width: 38, height: 38, display: "flex", alignItems: "center", justifyContent: "center" },
@@ -3483,6 +3532,7 @@ const styles = {
   switchThumb: { width: 18, height: 18, borderRadius: "50%", background: "#EDE6D6", transition: "transform 0.15s ease" },
   postImageWrap: { marginTop: 10 },
   postScorecardWrap: { marginTop: 10 },
+  postScorecardWrapLarge: { width: "100%", padding: "0 12px", boxSizing: "border-box", flexShrink: 0 },
   // touchAction "pan-x" alone blocks vertical panning entirely for any touch
   // that starts on the carousel, which froze the whole page's scroll while a
   // thumb was resting on a photo/scorecard. "pan-x pan-y" lets the browser's
