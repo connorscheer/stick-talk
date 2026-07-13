@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect, useLayoutEffect } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { Flag, TrendingUp, TrendingDown, Minus, Users, User, MessageCircle, Plus, MapPin, X, SlidersHorizontal, Award, ChevronRight, ChevronLeft, Landmark, Navigation, Check, Image as ImageIcon, Camera, Send, MoreHorizontal, Trash2, Search, Bell, Share2 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { supabase } from "./supabaseClient";
@@ -1143,43 +1143,6 @@ function MatchConfirmedTile({ post }) {
   );
 }
 
-// Scales its content down (never up) to fit exactly inside its box, with no
-// scrolling — used for the scorecard in the feed, whose natural height
-// rarely matches the fixed 4:3 box a photo would fill, so without this it
-// either overflows (scrollable) or gets clipped.
-function FitBox({ children }) {
-  const outerRef = useRef(null);
-  const innerRef = useRef(null);
-  const [scale, setScale] = useState({ x: 1, y: 1 });
-
-  useLayoutEffect(() => {
-    const outer = outerRef.current;
-    const inner = innerRef.current;
-    if (!outer || !inner) return;
-    function recompute() {
-      // Stretch independently on each axis so the box is always exactly the
-      // same size as a photo's — a uniform (aspect-preserving) scale would
-      // leave empty margins whenever the scorecard's proportions don't
-      // happen to match the box, making it look smaller than the photos
-      // next to it instead of a consistent size.
-      setScale({ x: outer.clientWidth / inner.scrollWidth, y: outer.clientHeight / inner.scrollHeight });
-    }
-    recompute();
-    const ro = new ResizeObserver(recompute);
-    ro.observe(outer);
-    ro.observe(inner);
-    return () => ro.disconnect();
-  }, [children]);
-
-  return (
-    <div ref={outerRef} style={{ width: "100%", height: "100%", overflow: "hidden" }}>
-      <div ref={innerRef} style={{ transform: `scale(${scale.x}, ${scale.y})`, transformOrigin: "top left" }}>
-        {children}
-      </div>
-    </div>
-  );
-}
-
 // A round's scorecard plus any photos, as one swipeable strip when there's
 // more than one item — dot indicators replace the native scrollbar, and
 // scrolling is locked to horizontal so a vertical swipe on mobile scrolls the
@@ -1207,16 +1170,16 @@ function PostMedia({ post: p, large, onOpen }) {
     setZoom((z) => ZOOM_STEPS[(ZOOM_STEPS.indexOf(z) + 1) % ZOOM_STEPS.length]);
   }
 
-  // A scorecard's natural height rarely matches a photo's 4:3 aspect ratio,
-  // so every item (scorecard or photo, whether it's the only item or one of
-  // several in the carousel) gets boxed into the same size — the scorecard
-  // scrolls internally if its content is taller than the box. In the
-  // fullscreen viewer, tapping cycles through zoom levels instead of
-  // opening anything further, and CSS transforms make an overflow:auto box
-  // pannable by drag/scroll once the content is bigger than the box.
+  // A fixed height (the scorecard's normal, unscaled size) rather than an
+  // aspect-ratio — photos are cropped with object-fit:cover to match it, so
+  // scorecards and photos are always exactly the same box, and the
+  // scorecard itself is never stretched or shrunk to fit. In the fullscreen
+  // viewer, tapping cycles through zoom levels instead of opening anything
+  // further, and CSS transforms make an overflow:auto box pannable by
+  // drag/scroll once the content is bigger than the box.
   const boxStyle = large
     ? { width: "100%", height: "100%", overflow: "auto", scrollbarWidth: "none", msOverflowStyle: "none", cursor: zoom === ZOOM_STEPS[ZOOM_STEPS.length - 1] ? "zoom-out" : "zoom-in" }
-    : { width: "100%", aspectRatio: "4 / 3", overflow: "hidden" };
+    : { width: "100%", height: 420, overflow: "hidden" };
   // In the fullscreen viewer the media should stretch to fill the space its
   // flex parent gives it, rather than sizing to its own content.
   const wrapStyle = large ? { flex: 1, minHeight: 0, display: "flex", flexDirection: "column", margin: 0 } : undefined;
@@ -1243,7 +1206,7 @@ function PostMedia({ post: p, large, onOpen }) {
       return (
         <div style={{ ...styles.postScorecardWrap, ...wrapStyle }}>
           <Item>
-            {large ? <Scorecard round={p.round} /> : <FitBox><Scorecard round={p.round} /></FitBox>}
+<Scorecard round={p.round} />
           </Item>
         </div>
       );
@@ -1270,7 +1233,7 @@ function PostMedia({ post: p, large, onOpen }) {
         {hasScorecard && (
           <div style={{ ...styles.postMediaScrollItem, ...(large ? { height: "100%" } : {}) }}>
             <Item>
-              {large ? <Scorecard round={p.round} /> : <FitBox><Scorecard round={p.round} /></FitBox>}
+  <Scorecard round={p.round} />
             </Item>
           </div>
         )}
