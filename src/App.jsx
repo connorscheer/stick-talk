@@ -138,7 +138,7 @@ function Avatar({ photo, name, style }) {
 // require being signed in — see README.md for the one-time Supabase setup
 // (table + policies). Signed-in accounts (Supabase Auth) are a separate
 // layer on top, used to carry a person's identity across devices.
-const STORAGE_KEYS = { posts: "sticktalk:posts", name: "sticktalk:my-name", profiles: "sticktalk:profiles", matches: "sticktalk:matches", follows: "sticktalk:follows" };
+const STORAGE_KEYS = { posts: "sticktalk:posts", name: "sticktalk:my-name", profiles: "sticktalk:profiles", matches: "sticktalk:matches", follows: "sticktalk:follows", groups: "sticktalk:groups" };
 
 async function loadShared(key, seed) {
   try {
@@ -573,6 +573,10 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [matches, setMatches] = useState([]);
   const [showMatchComposer, setShowMatchComposer] = useState(false);
+  const [matchSubTab, setMatchSubTab] = useState("matches"); // "matches" | "groups"
+  const [groups, setGroups] = useState([]);
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [viewingGroup, setViewingGroup] = useState(null); // group id
 
   const myInitials = initialsOf(myName);
 
@@ -639,6 +643,9 @@ export default function App() {
       const loadedFollows = await loadShared(STORAGE_KEYS.follows, null);
       if (loadedFollows) setFollows(loadedFollows);
 
+      const loadedGroups = await loadShared(STORAGE_KEYS.groups, null);
+      if (loadedGroups) setGroups(loadedGroups);
+
       setDataLoaded(true);
     })();
   }, []);
@@ -692,6 +699,17 @@ export default function App() {
       }
       const freshFollows = await loadShared(STORAGE_KEYS.follows, null);
       if (freshFollows) setFollows((prev) => (sameJson(freshFollows, prev) ? prev : freshFollows));
+      const freshGroups = await loadShared(STORAGE_KEYS.groups, null);
+      if (freshGroups) {
+        setGroups((prev) => {
+          const freshMap = new Map(freshGroups.map((x) => [x.id, x]));
+          const localIds = new Set(prev.map((x) => x.id));
+          const reconciled = prev.map((g) => (isRecentEdit("groups", g.id) ? g : freshMap.get(g.id) || g));
+          const newFromOthers = freshGroups.filter((x) => !localIds.has(x.id));
+          const next = [...newFromOthers, ...reconciled];
+          return sameJson(next, prev) ? prev : next;
+        });
+      }
     }, 5000);
     return () => clearInterval(interval);
   }, [dataLoaded]);
@@ -784,6 +802,40 @@ export default function App() {
       saveShared(STORAGE_KEYS.matches, next);
       return next;
     });
+  }
+
+  function updateGroups(updater) {
+    setGroups((prev) => {
+      const next = updater(prev);
+      saveShared(STORAGE_KEYS.groups, next);
+      return next;
+    });
+  }
+
+  function createGroup(name, photo) {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const id = "group-" + Date.now();
+    updateGroups((prev) => [{ id, name: trimmed, photo: photo || null, members: [myName], createdBy: myName, createdAt: new Date().toISOString() }, ...prev]);
+    setShowCreateGroup(false);
+  }
+
+  function toggleGroupMembership(id) {
+    markRecentEdit("groups", id);
+    updateGroups((prev) =>
+      prev.map((g) => {
+        if (g.id !== id) return g;
+        const members = g.members || [];
+        const already = members.includes(myName);
+        return { ...g, members: already ? members.filter((n) => n !== myName) : [...members, myName] };
+      })
+    );
+  }
+
+  function deleteGroup(id) {
+    markRecentEdit("groups", id);
+    updateGroups((prev) => prev.filter((g) => g.id !== id));
+    setViewingGroup(null);
   }
 
   function postMatch(course, when, spots, note) {
@@ -1130,7 +1182,7 @@ export default function App() {
             </div>
             <span style={styles.headerTitle}>
               {tab === "home" && <StickTalkWordmark />}
-              {tab === "match" && "Matches"}
+              {tab === "match" && (matchSubTab === "groups" ? "Groups" : "Matches")}
               {tab === "gps" && "GPS"}
               {tab === "profile" && "Profile"}
             </span>
@@ -1183,6 +1235,24 @@ export default function App() {
           />
         )}
         {tab === "match" && (
+          <div style={{ padding: "18px 16px 0" }}>
+            <div style={{ ...styles.toggleRow, marginBottom: 0 }}>
+              <button
+                style={{ ...styles.toggleChip, ...(matchSubTab === "matches" ? styles.toggleChipActive : {}) }}
+                onClick={() => setMatchSubTab("matches")}
+              >
+                Matches
+              </button>
+              <button
+                style={{ ...styles.toggleChip, ...(matchSubTab === "groups" ? styles.toggleChipActive : {}) }}
+                onClick={() => setMatchSubTab("groups")}
+              >
+                Groups
+              </button>
+            </div>
+          </div>
+        )}
+        {tab === "match" && matchSubTab === "matches" && (
           <MatchTab
             matches={matches}
             myName={myName}
@@ -1197,6 +1267,15 @@ export default function App() {
             setHandSpread={setHandSpread}
             requested={requested}
             onToggleRequest={toggleRequest}
+          />
+        )}
+        {tab === "match" && matchSubTab === "groups" && (
+          <GroupsTab
+            groups={groups}
+            myName={myName}
+            profiles={profiles}
+            onCreateGroup={() => setShowCreateGroup(true)}
+            onOpenGroup={(id) => setViewingGroup(id)}
           />
         )}
         {tab === "gps" && <GpsTab />}
@@ -1275,6 +1354,23 @@ export default function App() {
       )}
 
       {showComposer && <ComposerModal onClose={() => setShowComposer(false)} onSubmit={addPost} />}
+
+      {showCreateGroup && <CreateGroupModal onClose={() => setShowCreateGroup(false)} onSubmit={createGroup} />}
+
+      {viewingGroup && (
+        <GroupDetailModal
+          group={groups.find((g) => g.id === viewingGroup)}
+          myName={myName}
+          profiles={profiles}
+          onClose={() => setViewingGroup(null)}
+          onToggleMembership={toggleGroupMembership}
+          onDelete={deleteGroup}
+          onOpenProfile={(name) => {
+            setViewingGroup(null);
+            openProfile(name);
+          }}
+        />
+      )}
 
       {commentsFor && (
         <CommentsModal
@@ -2466,6 +2562,154 @@ function MatchTab({
           ))}
         </>
       )}
+    </div>
+  );
+}
+
+function GroupsTab({ groups, myName, profiles, onCreateGroup, onOpenGroup }) {
+  const sorted = [...groups].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  return (
+    <div style={styles.tabPad}>
+      <button style={styles.composerTrigger} onClick={onCreateGroup}>
+        <div style={styles.avatarSm}>{initialsOf(myName)}</div>
+        <span style={styles.composerPlaceholder}>Create a group with your friends</span>
+        <Plus size={17} color="#74C69D" />
+      </button>
+
+      <div style={{ ...styles.sectionLabel, color: "#FFFFFF" }}>Your groups</div>
+
+      {sorted.length === 0 && (
+        <div style={{ ...styles.empty, color: "rgba(255,255,255,0.75)" }}>
+          <p style={{ ...styles.emptyTitle, color: "#FFFFFF" }}>No groups yet</p>
+          <p style={styles.emptyBody}>Start one above — round-trip buddies, weekend league, whoever.</p>
+        </div>
+      )}
+
+      {sorted.map((g) => {
+        const members = g.members || [];
+        const iJoined = members.includes(myName);
+        return (
+          <button key={g.id} style={styles.groupCard} onClick={() => onOpenGroup(g.id)}>
+            <Avatar photo={g.photo} name={g.name} style={styles.postAvatar} />
+            <div style={{ flex: 1, textAlign: "left" }}>
+              <div style={styles.cardName}>{g.name}</div>
+              <div style={styles.cardMeta}>
+                <Users size={12} color="#9C9990" /> {members.length} {members.length === 1 ? "member" : "members"}
+                {iJoined && <span style={styles.groupJoinedTag}>Joined</span>}
+              </div>
+            </div>
+            <ChevronRight size={16} color="#9C9990" />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function CreateGroupModal({ onClose, onSubmit }) {
+  const [name, setName] = useState("");
+  const [photo, setPhoto] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef(null);
+
+  async function handleFile(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploading(true);
+    try {
+      setPhoto(await fileToSquareImage(file));
+    } catch (err) {
+      // upload failed — leave whatever photo state was there
+    }
+    setUploading(false);
+  }
+
+  return (
+    <div style={styles.modalOverlay} onClick={onClose}>
+      <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+        <div style={styles.modalHead}>
+          <span style={styles.modalTitle}>Create a group</span>
+          <button style={styles.iconBtn} onClick={onClose} aria-label="Close">
+            <X size={18} color="#FFFFFF" />
+          </button>
+        </div>
+
+        <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
+        <button style={{ ...styles.avatarEditBtn, margin: "0 auto 14px", display: "flex" }} onClick={() => fileRef.current?.click()}>
+          <div style={styles.avatarRingSm}>
+            <Avatar photo={photo} name={name || "?"} style={styles.avatarLg} />
+          </div>
+          <div style={styles.avatarEditBadge}>
+            {uploading ? <span style={styles.avatarEditSpinner} /> : <Camera size={13} color="#000000" />}
+          </div>
+        </button>
+
+        <input
+          style={styles.input}
+          placeholder="Group name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && name.trim() && onSubmit(name, photo)}
+          autoFocus
+        />
+
+        <button style={{ ...styles.logBtn, marginTop: 12, opacity: name.trim() ? 1 : 0.5 }} disabled={!name.trim()} onClick={() => onSubmit(name, photo)}>
+          Create group
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function GroupDetailModal({ group, myName, profiles, onClose, onToggleMembership, onDelete, onOpenProfile }) {
+  if (!group) return null;
+  const members = group.members || [];
+  const iJoined = members.includes(myName);
+  const isMine = group.createdBy === myName;
+
+  return (
+    <div style={styles.modalOverlay} onClick={onClose}>
+      <div style={{ ...styles.modal, maxHeight: "82vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+        <div style={styles.modalHead}>
+          <span style={styles.modalTitle}>{group.name}</span>
+          <button style={styles.iconBtn} onClick={onClose} aria-label="Close">
+            <X size={18} color="#FFFFFF" />
+          </button>
+        </div>
+
+        <div style={styles.profileViewHead}>
+          <div style={styles.avatarRingSm}>
+            <Avatar photo={group.photo} name={group.name} style={styles.avatarLg} />
+          </div>
+          <div style={styles.profileViewName}>{group.name}</div>
+          <div style={styles.profileViewCourse}>
+            <Users size={12} color="#9C9990" /> {members.length} {members.length === 1 ? "member" : "members"}
+          </div>
+          <button style={{ ...styles.followBtn, ...(iJoined ? styles.followBtnDone : {}) }} onClick={() => onToggleMembership(group.id)}>
+            {iJoined ? "Joined" : "Join group"}
+          </button>
+        </div>
+
+        <div style={styles.sectionLabel}>Members</div>
+        {members.map((name) => (
+          <button key={name} style={styles.followListRow} onClick={() => onOpenProfile(name)}>
+            <Avatar photo={profiles?.[name]?.photo} name={name} style={styles.postAvatar} />
+            <div style={{ textAlign: "left" }}>
+              <div style={styles.cardName}>
+                {name} {name === group.createdBy && <span style={styles.profileViewYouTag}>creator</span>}
+              </div>
+            </div>
+          </button>
+        ))}
+
+        {isMine && (
+          <button style={{ ...styles.declineBtn, width: "100%", marginTop: 14 }} onClick={() => onDelete(group.id)}>
+            Delete group
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -3675,6 +3919,8 @@ const styles = {
   filterLabel: { display: "block", fontSize: 12.5, color: "#FFFFFF", marginBottom: 10 },
   slider: { width: "100%", marginTop: 6, accentColor: "#74C69D" },
   matchCard: { background: "#232220", border: "1.5px solid #74C69D", borderRadius: 14, padding: 12, marginBottom: 10, display: "flex", gap: 10, alignItems: "flex-start" },
+  groupCard: { display: "flex", alignItems: "center", gap: 10, width: "100%", background: "#232220", border: "1.5px solid #74C69D", borderRadius: 14, padding: 12, marginBottom: 10, textAlign: "left" },
+  groupJoinedTag: { marginLeft: 8, fontSize: 10.5, color: "#74C69D", fontWeight: 700 },
   availText: { fontSize: 11.5, color: "#74C69D", marginTop: 3 },
   hcpChip: { fontFamily: "'Baloo 2', sans-serif", fontSize: 11, background: "#171513", border: "1.5px solid #74C69D", borderRadius: 6, padding: "2px 7px" },
   reqBtn: { border: "1px solid", borderRadius: 8, fontSize: 11.5, fontWeight: 700, padding: "6px 10px", whiteSpace: "nowrap" },
