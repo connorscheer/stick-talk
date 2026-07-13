@@ -79,6 +79,13 @@ const seedPosts = [
 ];
 
 
+// Cheap deep-equality check for plain JSON-shaped data (posts/profiles/
+// matches) — used to skip a state update (and the re-render it triggers)
+// when a poll comes back with data identical to what's already showing.
+function sameJson(a, b) {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
 function initialsOf(name) {
   return (
     (name || "")
@@ -488,11 +495,16 @@ export default function App() {
           // can catch a not-yet-updated snapshot and undo your own action.
           const reconciled = prev.map((p) => (isRecentEdit("posts", p.id) ? p : freshMap.get(p.id) || p));
           const newFromOthers = freshPosts.filter((x) => !localIds.has(x.id));
-          return [...newFromOthers, ...reconciled];
+          const next = [...newFromOthers, ...reconciled];
+          // Bail out to the *same* array reference when nothing actually
+          // changed — otherwise every 5-second tick forces a fresh array
+          // (and a full re-render of the whole feed) even when the poll
+          // came back identical, which is what was causing the flicker.
+          return sameJson(next, prev) ? prev : next;
         });
       }
       const freshProfiles = await loadShared(STORAGE_KEYS.profiles, null);
-      if (freshProfiles) setProfiles(freshProfiles);
+      if (freshProfiles) setProfiles((prev) => (sameJson(freshProfiles, prev) ? prev : freshProfiles));
       const freshMatches = await loadShared(STORAGE_KEYS.matches, null);
       if (freshMatches) {
         setMatches((prev) => {
@@ -500,7 +512,8 @@ export default function App() {
           const localIds = new Set(prev.map((x) => x.id));
           const reconciled = prev.map((m) => (isRecentEdit("matches", m.id) ? m : freshMap.get(m.id) || m));
           const newFromOthers = freshMatches.filter((x) => !localIds.has(x.id));
-          return [...newFromOthers, ...reconciled];
+          const next = [...newFromOthers, ...reconciled];
+          return sameJson(next, prev) ? prev : next;
         });
       }
     }, 5000);
