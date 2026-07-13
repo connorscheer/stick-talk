@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
-import { Flag, TrendingUp, TrendingDown, Minus, Users, User, Heart, MessageCircle, Plus, MapPin, X, SlidersHorizontal, Award, ChevronRight, ChevronLeft, Landmark, Navigation, Check, Image as ImageIcon, Camera, Send, MoreHorizontal, Trash2, Search, Bell, Share2 } from "lucide-react";
+import { Flag, TrendingUp, TrendingDown, Minus, Users, User, MessageCircle, Plus, MapPin, X, SlidersHorizontal, Award, ChevronRight, ChevronLeft, Landmark, Navigation, Check, Image as ImageIcon, Camera, Send, MoreHorizontal, Trash2, Search, Bell, Share2 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
+import { supabase } from "./supabaseClient";
 
 // Putting-green grass texture photo, resized/compressed for use as a tiled background.
 const GRASS_TEXTURE = "data:image/jpeg;base64,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";
@@ -74,13 +75,34 @@ function initialsOf(name) {
   );
 }
 
+// Deterministic placeholder avatar color per name, so a stack of avatars
+// reads as distinct people rather than identical gray circles.
+const AVATAR_COLORS = ["#74C69D", "#F4A261", "#E76F51", "#4CC9F0", "#B5838D", "#FFD166", "#6A994E", "#9B5DE5"];
+function colorForName(name) {
+  const str = name || "?";
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+// Renders a real profile photo when one is set, otherwise falls back to the
+// colored-initials circle used everywhere else in the app.
+function Avatar({ photo, name, style }) {
+  if (photo) {
+    return <img src={photo} alt={name} style={{ ...style, objectFit: "cover" }} />;
+  }
+  return (
+    <div style={{ ...style, background: colorForName(name), display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: "#000000" }}>
+      {initialsOf(name)}
+    </div>
+  );
+}
+
 // ---------- Shared storage helpers ----------
 // Everyone who opens this website reads/writes the same rows in the Supabase
 // `sticktalk_kv` table, which is what makes the feed a real multi-person feed
 // instead of a private per-viewer demo. No login required — see README.md
 // for the one-time Supabase setup (table + policies).
-import { supabase } from "./supabaseClient";
-
 const STORAGE_KEYS = { posts: "sticktalk:posts", name: "sticktalk:my-name", profiles: "sticktalk:profiles", matches: "sticktalk:matches" };
 
 async function loadShared(key, seed) {
@@ -157,6 +179,34 @@ function fileToSharedImage(file, maxDim = 900, quality = 0.72) {
         canvas.width = width;
         canvas.height = height;
         canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// Profile photos only ever render inside a circular avatar (always a square
+// crop), so — like Instagram, Twitter, etc. — crop to a centered square
+// before upload instead of keeping the full rectangle. Avoids wasting bytes
+// on parts of the photo nobody will ever see, and keeps every avatar the
+// same shape regardless of what the original photo looked like.
+function fileToSquareImage(file, size = 480, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new window.Image();
+      img.onload = () => {
+        const side = Math.min(img.width, img.height);
+        const sx = (img.width - side) / 2;
+        const sy = (img.height - side) / 2;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        canvas.getContext("2d").drawImage(img, sx, sy, side, side, 0, 0, size, size);
         resolve(canvas.toDataURL("image/jpeg", quality));
       };
       img.onerror = reject;
@@ -353,8 +403,10 @@ export default function App() {
   const [showInbox, setShowInbox] = useState(false);
   const [showComposer, setShowComposer] = useState(false);
   const [commentsFor, setCommentsFor] = useState(null); // postId
+  const [likersFor, setLikersFor] = useState(null); // postId
   const [homeCourse, setHomeCourse] = useState("");
-  const [profiles, setProfiles] = useState({}); // { [name]: {initials, homeCourse, handicap, avgScore, bestRound, roundsCount} }
+  const [myPhoto, setMyPhoto] = useState(null);
+  const [profiles, setProfiles] = useState({}); // { [name]: {initials, homeCourse, handicap, avgScore, bestRound, roundsCount, photo} }
   const [viewingProfile, setViewingProfile] = useState(null); // name of the profile being viewed, or null
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -366,12 +418,15 @@ export default function App() {
   // Load identity + shared feed data once on mount.
   useEffect(() => {
     (async () => {
-      const savedName = loadPersonal(STORAGE_KEYS.name, null);
+      const savedName = await loadPersonal(STORAGE_KEYS.name, null);
       if (savedName) setMyName(savedName);
       setNameLoaded(true);
 
-      const savedCourse = loadPersonal("sticktalk:my-home-course", null);
+      const savedCourse = await loadPersonal("sticktalk:my-home-course", null);
       setHomeCourse(savedCourse || "Pinehurst Municipal");
+
+      const savedPhoto = await loadPersonal("sticktalk:my-photo", null);
+      if (savedPhoto) setMyPhoto(savedPhoto);
 
       const loadedPosts = await loadShared(STORAGE_KEYS.posts, null);
       if (loadedPosts) {
@@ -410,9 +465,14 @@ export default function App() {
       const freshPosts = await loadShared(STORAGE_KEYS.posts, null);
       if (freshPosts) {
         setPosts((prev) => {
-          const freshIds = new Set(freshPosts.map((x) => x.id));
-          const localOnly = prev.filter((x) => !freshIds.has(x.id));
-          return [...localOnly, ...freshPosts];
+          const freshMap = new Map(freshPosts.map((x) => [x.id, x]));
+          const localIds = new Set(prev.map((x) => x.id));
+          // Keep the local copy for anything edited in the last few seconds
+          // (a like, comment, or delete you just made) — otherwise this poll
+          // can catch a not-yet-updated snapshot and undo your own action.
+          const reconciled = prev.map((p) => (isRecentEdit("posts", p.id) ? p : freshMap.get(p.id) || p));
+          const newFromOthers = freshPosts.filter((x) => !localIds.has(x.id));
+          return [...newFromOthers, ...reconciled];
         });
       }
       const freshProfiles = await loadShared(STORAGE_KEYS.profiles, null);
@@ -420,9 +480,11 @@ export default function App() {
       const freshMatches = await loadShared(STORAGE_KEYS.matches, null);
       if (freshMatches) {
         setMatches((prev) => {
-          const freshIds = new Set(freshMatches.map((x) => x.id));
-          const localOnly = prev.filter((x) => !freshIds.has(x.id));
-          return [...localOnly, ...freshMatches];
+          const freshMap = new Map(freshMatches.map((x) => [x.id, x]));
+          const localIds = new Set(prev.map((x) => x.id));
+          const reconciled = prev.map((m) => (isRecentEdit("matches", m.id) ? m : freshMap.get(m.id) || m));
+          const newFromOthers = freshMatches.filter((x) => !localIds.has(x.id));
+          return [...newFromOthers, ...reconciled];
         });
       }
     }, 5000);
@@ -442,6 +504,7 @@ export default function App() {
       avgScore: rounds.length ? Math.round(rounds.reduce((a, r) => a + r.score, 0) / rounds.length) : null,
       bestRound: rounds.length ? Math.min(...rounds.map((r) => r.score)) : null,
       roundsCount: rounds.length,
+      photo: myPhoto,
     };
     setProfiles((prev) => {
       const next = { ...prev, [myName]: snapshot };
@@ -449,7 +512,12 @@ export default function App() {
       return next;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataLoaded, myName, myInitials, homeCourse, rounds]);
+  }, [dataLoaded, myName, myInitials, homeCourse, rounds, myPhoto]);
+
+  function saveMyPhoto(dataUrl) {
+    setMyPhoto(dataUrl);
+    savePersonal("sticktalk:my-photo", dataUrl);
+  }
 
   function saveMyHomeCourse(course) {
     setHomeCourse(course);
@@ -467,7 +535,7 @@ export default function App() {
     savePersonal(STORAGE_KEYS.name, trimmed);
   }
 
-  function switchIdentity() {
+  function logOut() {
     setMyName(null);
     clearPersonal(STORAGE_KEYS.name);
   }
@@ -505,6 +573,7 @@ export default function App() {
   }
 
   function toggleJoinMatch(id) {
+    markRecentEdit("matches", id);
     updateMatches((prev) =>
       prev.map((m) => {
         if (m.id !== id) return m;
@@ -516,6 +585,7 @@ export default function App() {
   }
 
   function deleteMatch(id) {
+    markRecentEdit("matches", id);
     updateMatches((prev) => prev.filter((m) => m.id !== id));
   }
 
@@ -584,7 +654,17 @@ export default function App() {
     setShowComposer(false);
   }
 
+  const recentEditsRef = useRef({});
+  function markRecentEdit(kind, id) {
+    recentEditsRef.current[`${kind}:${id}`] = Date.now();
+  }
+  function isRecentEdit(kind, id) {
+    const t = recentEditsRef.current[`${kind}:${id}`];
+    return t != null && Date.now() - t < 8000;
+  }
+
   function toggleLike(id) {
+    markRecentEdit("posts", id);
     updatePosts((prev) =>
       prev.map((p) => {
         if (p.id !== id) return p;
@@ -596,11 +676,13 @@ export default function App() {
   }
 
   function deletePost(id) {
+    markRecentEdit("posts", id);
     updatePosts((prev) => prev.filter((p) => p.id !== id));
   }
 
   function addComment(postId, text) {
     if (!text.trim()) return;
+    markRecentEdit("posts", postId);
     updatePosts((prev) =>
       prev.map((p) =>
         p.id === postId
@@ -718,7 +800,7 @@ export default function App() {
           <div style={styles.headerRow}>
             <div style={styles.headerSide}>
               <button style={styles.headerAvatarBtn} onClick={() => openProfile(myName)} aria-label="View your profile">
-                <div style={styles.avatarSm}>{myInitials}</div>
+                <Avatar photo={myPhoto} name={myName} style={styles.avatarSm} />
               </button>
               {(tab === "home" || tab === "match") && (
                 <button style={styles.headerIconBtn} onClick={() => setShowSearch(true)} aria-label="Search">
@@ -752,9 +834,12 @@ export default function App() {
             myInitials={myInitials}
             onOpenComposer={() => setShowComposer(true)}
             onOpenComments={(postId) => setCommentsFor(postId)}
+            onOpenLikers={(postId) => setLikersFor(postId)}
             onOpenProfile={openProfile}
             rounds={rounds}
             onPostScore={() => setShowLogForm(true)}
+            profiles={profiles}
+            myPhoto={myPhoto}
           />
         )}
         {tab === "match" && (
@@ -790,7 +875,9 @@ export default function App() {
             homeCourse={homeCourse}
             onSaveHomeCourse={saveMyHomeCourse}
             trendData={trendData}
-            onSwitchIdentity={switchIdentity}
+            onLogOut={logOut}
+            myPhoto={myPhoto}
+            onSavePhoto={saveMyPhoto}
           />
         )}
       </main>
@@ -833,6 +920,17 @@ export default function App() {
           onClose={() => setCommentsFor(null)}
           onAddComment={(text) => addComment(commentsFor, text)}
           onOpenProfile={openProfile}
+        />
+      )}
+
+      {likersFor && (
+        <LikersModal
+          post={posts.find((p) => p.id === likersFor)}
+          onClose={() => setLikersFor(null)}
+          onOpenProfile={(name) => {
+            setLikersFor(null);
+            openProfile(name);
+          }}
         />
       )}
 
@@ -879,9 +977,12 @@ function HomeTab({
   myInitials,
   onOpenComposer,
   onOpenComments,
+  onOpenLikers,
   onOpenProfile,
   rounds,
   onPostScore,
+  profiles,
+  myPhoto,
 }) {
   return (
     <div style={styles.tabPad}>
@@ -890,7 +991,7 @@ function HomeTab({
       <div style={styles.sectionBreak} />
 
       <button style={styles.composerTrigger} onClick={onOpenComposer}>
-        <div style={styles.avatarSm}>{myInitials}</div>
+        <Avatar photo={myPhoto} name={myName} style={styles.avatarSm} />
         <span style={styles.composerPlaceholder}>Talk some Stick.</span>
         <ImageIcon size={17} color="#74C69D" />
       </button>
@@ -908,7 +1009,7 @@ function HomeTab({
         p.kind === "match" ? (
           <MatchConfirmedTile key={p.id} post={p} />
         ) : (
-          <PostCard key={p.id} post={p} onLike={onLike} onOpenComments={onOpenComments} onDelete={onDelete} myName={myName} onOpenProfile={onOpenProfile} />
+          <PostCard key={p.id} post={p} onLike={onLike} onOpenComments={onOpenComments} onOpenLikers={onOpenLikers} onDelete={onDelete} myName={myName} onOpenProfile={onOpenProfile} authorPhoto={profiles?.[p.author]?.photo} />
         )
       )}
     </div>
@@ -996,7 +1097,7 @@ function MatchConfirmedTile({ post }) {
   );
 }
 
-function PostCard({ post: p, onLike, onOpenComments, onDelete, myName, onOpenProfile }) {
+function PostCard({ post: p, onLike, onOpenComments, onOpenLikers, onDelete, myName, onOpenProfile, authorPhoto }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const kindMeta = {
     round: { label: null },
@@ -1024,7 +1125,7 @@ function PostCard({ post: p, onLike, onOpenComments, onDelete, myName, onOpenPro
     <div style={styles.card}>
       <div style={styles.cardTopRow}>
         <button style={styles.postAuthorBtn} onClick={() => onOpenProfile(p.author)}>
-          <div style={styles.postAvatar}>{p.initials || p.author?.slice(0, 2).toUpperCase()}</div>
+          <Avatar photo={authorPhoto} name={p.author} style={styles.postAvatar} />
           <div style={{ flex: 1, textAlign: "left" }}>
             <div style={styles.cardName}>{p.author}</div>
             <div style={styles.cardMeta}>
@@ -1074,19 +1175,40 @@ function PostCard({ post: p, onLike, onOpenComments, onDelete, myName, onOpenPro
 
       {p.images && p.images.length > 0 && (
         <div style={styles.postImageWrap}>
-          <PhotoTile src={p.images[0]} style={{ width: "100%", height: 210, borderRadius: 18, border: "1px solid #74C69D" }} alt={p.kind === "round" ? `${p.author}'s round at ${p.round.course}` : `Photo shared by ${p.author}`} />
+          <PhotoTile src={p.images[0]} style={{ width: "100%", aspectRatio: "4 / 3", borderRadius: 18, border: "1px solid #74C69D" }} alt={p.kind === "round" ? `${p.author}'s round at ${p.round.course}` : `Photo shared by ${p.author}`} />
         </div>
       )}
 
-      <div style={styles.socialLine}>
-        {likedBy.length === 0
-          ? "Be the first to give a golf clap!"
-          : `${likedBy.length} ${likedBy.length === 1 ? "golfer" : "golfers"} gave a golf clap`}
-      </div>
+      {likedBy.length === 0 ? (
+        <div style={styles.socialLine}>Be the first to give a golf clap!</div>
+      ) : (
+        <button style={styles.likersRow} onClick={() => onOpenLikers(p.id)}>
+          <div style={styles.likersStack}>
+            {likedBy.slice(0, 4).map((name, i) => (
+              <div key={name} style={{ ...styles.likersAvatar, background: colorForName(name), marginLeft: i === 0 ? 0 : -8, zIndex: 4 - i }}>
+                {initialsOf(name)}
+              </div>
+            ))}
+          </div>
+          <span style={styles.likersCountText}>
+            {likedBy.length} gave {likedBy.length === 1 ? "a golf clap" : "golf claps"}
+          </span>
+        </button>
+      )}
 
       <div style={styles.cardActions}>
-        <button style={styles.actionBtnFull} onClick={() => onLike(p.id)} aria-label="Like">
-          <Heart size={21} color={iLiked ? "#C1443A" : "#9C9990"} fill={iLiked ? "#C1443A" : "none"} />
+        <button style={styles.actionBtnFull} onClick={() => onLike(p.id)} aria-label="Golf clap">
+          <span
+            style={{
+              fontSize: 21,
+              lineHeight: 1,
+              filter: iLiked ? "none" : "grayscale(1) opacity(0.55)",
+              transform: iLiked ? "scale(1.08)" : "scale(1)",
+              transition: "transform 0.12s ease",
+            }}
+          >
+            👏
+          </span>
         </button>
         <button style={styles.actionBtnFull} onClick={() => onOpenComments(p.id)} aria-label="Comment">
           <MessageCircle size={21} color="#9C9990" />
@@ -1157,7 +1279,7 @@ function ComposerModal({ onClose, onSubmit }) {
 
         {image ? (
           <div style={styles.composerImageWrap}>
-            <PhotoTile src={image} style={{ width: "100%", height: 160, borderRadius: 12 }} alt="Photo preview" />
+            <PhotoTile src={image} style={{ width: "100%", aspectRatio: "4 / 3", borderRadius: 12 }} alt="Photo preview" />
             <button style={styles.composerImageRemove} onClick={() => setImage(null)} aria-label="Remove photo">
               <Trash2 size={14} color="#FFFFFF" />
             </button>
@@ -1235,8 +1357,43 @@ function CommentsModal({ post, onClose, onAddComment, onOpenProfile }) {
   );
 }
 
+function LikersModal({ post, onClose, onOpenProfile }) {
+  if (!post) return null;
+  const likedBy = post.likedBy || [];
+
+  return (
+    <div style={styles.modalOverlay} onClick={onClose}>
+      <div style={{ ...styles.modal, maxHeight: "78vh", display: "flex", flexDirection: "column" }} onClick={(e) => e.stopPropagation()}>
+        <div style={styles.modalHead}>
+          <span style={styles.modalTitle}>Golf claps</span>
+          <button style={styles.iconBtn} onClick={onClose} aria-label="Close">
+            <X size={18} color="#FFFFFF" />
+          </button>
+        </div>
+
+        <div style={{ overflowY: "auto", flex: 1 }}>
+          {likedBy.length === 0 && (
+            <div style={styles.empty}>
+              <p style={styles.emptyTitle}>No golf claps yet</p>
+              <p style={styles.emptyBody}>Be the first to give one.</p>
+            </div>
+          )}
+          {likedBy.map((name) => (
+            <button key={name} style={styles.commentRowBtn} onClick={() => onOpenProfile(name)}>
+              <div style={{ ...styles.avatarSm, background: colorForName(name) }}>{initialsOf(name)}</div>
+              <div style={{ flex: 1, textAlign: "left" }}>
+                <div style={styles.cardName}>{name}</div>
+              </div>
+              <span style={{ fontSize: 18 }}>👏</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ProfileViewModal({ name, profile, isMine, onClose }) {
-  const initials = initialsOf(name);
   return (
     <div style={styles.modalOverlay} onClick={onClose}>
       <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -1249,7 +1406,7 @@ function ProfileViewModal({ name, profile, isMine, onClose }) {
 
         <div style={styles.profileViewHead}>
           <div style={styles.avatarRingSm}>
-            <div style={styles.avatarLg}>{initials}</div>
+            <Avatar photo={profile?.photo} name={name} style={styles.avatarLg} />
           </div>
           <div style={styles.profileViewName}>
             {name} {isMine && <span style={styles.profileViewYouTag}>(you)</span>}
@@ -1628,9 +1785,11 @@ function InboxModal({ inbox, golfers, onClose, onRespond }) {
   );
 }
 
-function ProfileTab({ myName, myInitials, currentHandicap, avgScore, bestRound, roundsCount, ghinStatus, ghinNumber, ghinHandicap, onConnectGhin, homeCourse, onSaveHomeCourse, trendData, onSwitchIdentity }) {
+function ProfileTab({ myName, myInitials, currentHandicap, avgScore, bestRound, roundsCount, ghinStatus, ghinNumber, ghinHandicap, onConnectGhin, homeCourse, onSaveHomeCourse, trendData, onLogOut, myPhoto, onSavePhoto }) {
   const [editingCourse, setEditingCourse] = useState(false);
   const [courseDraft, setCourseDraft] = useState(homeCourse || "");
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const photoInputRef = useRef(null);
 
   function saveCourse() {
     const trimmed = courseDraft.trim();
@@ -1638,12 +1797,31 @@ function ProfileTab({ myName, myInitials, currentHandicap, avgScore, bestRound, 
     setEditingCourse(false);
   }
 
+  async function handlePhotoChange(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setPhotoUploading(true);
+    try {
+      onSavePhoto(await fileToSquareImage(file));
+    } catch (err) {
+      // upload failed — leave the existing photo (or lack of one) in place
+    }
+    setPhotoUploading(false);
+  }
+
   return (
     <div style={styles.tabPad}>
       <div style={styles.profileHead}>
-        <div style={styles.avatarRing}>
-          <div style={styles.avatarLg}>{myInitials}</div>
-        </div>
+        <input ref={photoInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhotoChange} />
+        <button style={styles.avatarEditBtn} onClick={() => photoInputRef.current?.click()} aria-label="Change profile photo">
+          <div style={styles.avatarRing}>
+            <Avatar photo={myPhoto} name={myName} style={styles.avatarLg} />
+          </div>
+          <div style={styles.avatarEditBadge}>
+            {photoUploading ? <span style={styles.avatarEditSpinner} /> : <Camera size={13} color="#000000" />}
+          </div>
+        </button>
         <div style={{ ...styles.profileName, color: "#FFFFFF" }}>{myName}</div>
         {editingCourse ? (
           <div style={styles.homeCourseEditRow}>
@@ -1735,8 +1913,8 @@ function ProfileTab({ myName, myInitials, currentHandicap, avgScore, bestRound, 
       <button style={styles.settingsRow}>
         Notification preferences <ChevronRight size={16} color="#9C9990" />
       </button>
-      <button style={{ ...styles.settingsRow, color: "#C1443A" }} onClick={onSwitchIdentity}>
-        Not you? Switch name <ChevronRight size={16} color="#C1443A" />
+      <button style={{ ...styles.settingsRow, color: "#C1443A" }} onClick={onLogOut}>
+        Log out <ChevronRight size={16} color="#C1443A" />
       </button>
     </div>
   );
@@ -1789,7 +1967,7 @@ const PAR_LAYOUT = [4, 4, 3, 5, 4, 4, 3, 5, 4, 4, 4, 3, 5, 4, 4, 3, 5, 4];
 function scoreColor(diff) {
   if (diff <= -2) return "#F4C430"; // eagle or better
   if (diff === -1) return "#74C69D"; // birdie
-  if (diff === 0) return "#FFFFFF"; // par
+  if (diff === 0) return "#000000"; // par
   if (diff === 1) return "#F4A261"; // bogey
   return "#C1443A"; // double or worse
 }
@@ -1842,7 +2020,7 @@ function Scorecard({ round }) {
     const isSquare = diff >= 1;
     const isDouble = diff <= -2 || diff >= 2;
     const shape = isCircle ? "50%" : isSquare ? 5 : 0;
-    const textStyle = { ...styles.scorecardCellScore, color: "#FFFFFF", marginTop: 0 };
+    const textStyle = { ...styles.scorecardCellScore, color: "#000000", marginTop: 0 };
 
     if (!isCircle && !isSquare) {
       return <span style={textStyle}>{score}</span>;
@@ -2033,7 +2211,7 @@ function LogRoundModal({ onClose, onSubmit }) {
           <input ref={photoRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleRoundPhoto} />
           {roundPhoto ? (
             <div style={styles.composerImageWrap}>
-              <PhotoTile src={roundPhoto} style={{ width: "100%", height: 140, borderRadius: 12 }} alt="Round photo preview" />
+              <PhotoTile src={roundPhoto} style={{ width: "100%", aspectRatio: "4 / 3", borderRadius: 12 }} alt="Round photo preview" />
               <button style={styles.composerImageRemove} onClick={() => setRoundPhoto(null)} aria-label="Remove photo">
                 <Trash2 size={14} color="#FFFFFF" />
               </button>
@@ -2518,7 +2696,7 @@ const styles = {
   homeCourseEditRow: { display: "flex", alignItems: "center", gap: 6, marginTop: 2 },
   homeCourseInput: { background: "#F4F5F1", border: "1px solid #D8DCD3", borderRadius: 8, padding: "6px 10px", fontSize: 13, color: "#000000", textAlign: "center" },
   homeCourseSaveBtn: { width: 26, height: 26, borderRadius: "50%", background: "#74C69D", border: "none", display: "flex", alignItems: "center", justifyContent: "center" },
-  cardName: { fontWeight: 700, fontSize: 16.5 },
+  cardName: { fontWeight: 700, fontSize: 16.5, color: "#FFFFFF" },
   cardMeta: { fontSize: 13, color: "#9C9990", display: "flex", alignItems: "center", gap: 4, marginTop: 3 },
   noteText: { fontSize: 17, color: "#FFFFFF", marginTop: 8, lineHeight: 1.45, fontWeight: 500 },
   avatarSm: { width: 36, height: 36, borderRadius: "50%", background: "#4A4844", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12.5, fontWeight: 700, flexShrink: 0 },
@@ -2527,6 +2705,10 @@ const styles = {
   cardActions: { display: "flex", marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)" },
   actionBtnFull: { flex: 1, background: "none", border: "none", display: "flex", alignItems: "center", justifyContent: "center", padding: "9px 0" },
   socialLine: { fontSize: 13, color: "#9C9990", marginTop: 14 },
+  likersRow: { display: "flex", alignItems: "center", gap: 8, marginTop: 14, background: "none", border: "none", padding: 0 },
+  likersStack: { display: "flex", alignItems: "center" },
+  likersAvatar: { width: 24, height: 24, borderRadius: "50%", border: "2px solid #232220", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9.5, fontWeight: 700, color: "#000000" },
+  likersCountText: { fontSize: 13, color: "#9C9990" },
   kebabBtn: { background: "none", border: "none", padding: 4, display: "flex" },
   menuBackdrop: { position: "fixed", inset: 0, background: "transparent", border: "none", zIndex: 5 },
   postMenu: { position: "absolute", top: "calc(100% + 4px)", right: 0, background: "#3A3936", border: "1px solid #74C69D", borderRadius: 10, overflow: "hidden", zIndex: 6, boxShadow: "0 8px 20px rgba(0,0,0,0.35)", minWidth: 150 },
@@ -2552,6 +2734,9 @@ const styles = {
   profileHead: { textAlign: "center", marginBottom: 20 },
   profileName: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 23, marginTop: 10 },
   avatarRing: { width: 76, height: 76, borderRadius: "50%", background: "conic-gradient(from 180deg, #74C69D, #4A4844, #74C69D)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto", padding: 3 },
+  avatarEditBtn: { position: "relative", background: "none", border: "none", padding: 0, display: "block", margin: "0 auto" },
+  avatarEditBadge: { position: "absolute", bottom: 0, right: 0, width: 26, height: 26, borderRadius: "50%", background: "#74C69D", border: "2px solid #232220", display: "flex", alignItems: "center", justifyContent: "center" },
+  avatarEditSpinner: { width: 11, height: 11, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.3)", borderTopColor: "#000000", animation: "spin 0.8s linear infinite" },
   avatarRingSm: { width: 62, height: 62, borderRadius: "50%", background: "conic-gradient(from 180deg, #74C69D, #4A4844, #74C69D)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto", padding: 3 },
   profileViewHead: { textAlign: "center", marginBottom: 16 },
   profileViewName: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 20, color: "#FFFFFF", marginTop: 8 },
@@ -2696,31 +2881,31 @@ const styles = {
   switchThumb: { width: 18, height: 18, borderRadius: "50%", background: "#EDE6D6", transition: "transform 0.15s ease" },
   postImageWrap: { marginTop: 10 },
   postScorecardWrap: {},
-  scorecardWrap: { background: "#171513", border: "1px solid #74C69D", borderRadius: 18, padding: "16px 14px", marginTop: 12 },
+  scorecardWrap: { background: "#F5EFDD", border: "1px solid #74C69D", borderRadius: 18, padding: "16px 14px", marginTop: 12 },
   scorecardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, padding: "0 2px" },
-  scorecardTitle: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 16, color: "#FFFFFF" },
-  scorecardTeeLine: { fontSize: 12, color: "#9C9990", marginTop: 2 },
+  scorecardTitle: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 16, color: "#000000" },
+  scorecardTeeLine: { fontSize: 12, color: "#6B6963", marginTop: 2 },
   scorecardHoleRow: { display: "flex", gap: 4 },
-  scorecardCell: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", background: "#232220", borderRadius: 10, padding: "8px 0" },
-  scorecardCellNum: { fontSize: 10.5, color: "#9C9990", fontWeight: 600 },
+  scorecardCell: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", background: "#EDE4CC", borderRadius: 10, padding: "8px 0" },
+  scorecardCellNum: { fontSize: 10.5, color: "#6B6963", fontWeight: 600 },
   scorecardCellScore: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 16, marginTop: 2 },
-  scoreMarkRing: { display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 24, height: 24, border: "1.5px solid #FFFFFF", boxSizing: "border-box" },
+  scoreMarkRing: { display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 24, height: 24, border: "1.5px solid #000000", boxSizing: "border-box" },
   scoreMarkOuterRing: { minWidth: 30, height: 30, padding: 2 },
   scoreMarkSlot: { height: 32, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 2 },
   scorecardDivider: { height: 8 },
-  scorecardSummaryRow: { display: "flex", marginTop: 14, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.10)" },
+  scorecardSummaryRow: { display: "flex", marginTop: 14, paddingTop: 14, borderTop: "1px solid rgba(0,0,0,0.12)" },
   scorecardSummaryItem: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center" },
-  scorecardSummaryLabel: { fontSize: 10.5, color: "#9C9990", fontWeight: 700, letterSpacing: 0.5 },
-  scorecardSummaryValue: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 24, color: "#FFFFFF", marginTop: 3 },
-  scorecardFoot: { fontFamily: "'Baloo 2', sans-serif", fontSize: 12, color: "#9C9990", marginTop: 12, textAlign: "center" },
-  scorecardTicket: { background: "#171513", border: "1px solid #74C69D", borderRadius: 18, padding: 18, marginTop: 12 },
+  scorecardSummaryLabel: { fontSize: 10.5, color: "#6B6963", fontWeight: 700, letterSpacing: 0.5 },
+  scorecardSummaryValue: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 24, color: "#000000", marginTop: 3 },
+  scorecardFoot: { fontFamily: "'Baloo 2', sans-serif", fontSize: 12, color: "#6B6963", marginTop: 12, textAlign: "center" },
+  scorecardTicket: { background: "#F5EFDD", border: "1px solid #74C69D", borderRadius: 18, padding: 18, marginTop: 12 },
   scorecardTicketTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 },
-  scorecardTicketCourse: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 16, color: "#FFFFFF" },
-  scorecardTicketDate: { fontSize: 11.5, color: "#9C9990" },
+  scorecardTicketCourse: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 16, color: "#000000" },
+  scorecardTicketDate: { fontSize: 11.5, color: "#6B6963" },
   scorecardTicketMain: { display: "flex", alignItems: "baseline", gap: 10, justifyContent: "center", marginBottom: 8 },
-  scorecardTicketScore: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 44, color: "#FFFFFF", lineHeight: 1 },
+  scorecardTicketScore: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 44, color: "#000000", lineHeight: 1 },
   scorecardTicketToPar: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 20 },
-  scorecardTicketFoot: { fontFamily: "'Baloo 2', sans-serif", fontSize: 12, color: "#9C9990", textAlign: "center" },
+  scorecardTicketFoot: { fontFamily: "'Baloo 2', sans-serif", fontSize: 12, color: "#6B6963", textAlign: "center" },
   commentPreviewWrap: { marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)" },
   commentPreviewLine: { fontSize: 13.5, color: "#D6D4CC", marginBottom: 4, lineHeight: 1.45 },
   commentPreviewAuthor: { fontWeight: 700, color: "#FFFFFF" },
