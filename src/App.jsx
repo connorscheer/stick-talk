@@ -1216,7 +1216,7 @@ function PostMedia({ post: p, large, onOpen }) {
     : { width: "100%", aspectRatio: "4 / 3", overflow: "hidden" };
   // In the fullscreen viewer the media should stretch to fill the space its
   // flex parent gives it, rather than sizing to its own content.
-  const wrapStyle = large ? { flex: 1, minHeight: 0, display: "flex", flexDirection: "column" } : undefined;
+  const wrapStyle = large ? { flex: 1, minHeight: 0, display: "flex", flexDirection: "column", margin: 0 } : undefined;
 
   function Item({ children }) {
     if (!large) {
@@ -1248,7 +1248,7 @@ function PostMedia({ post: p, large, onOpen }) {
     return (
       <div style={{ ...styles.postImageWrap, ...wrapStyle }}>
         <Item>
-          <PhotoTile src={images[0]} style={{ width: "100%", height: "100%", objectFit: large ? "contain" : "cover", borderRadius: 18, border: "1.5px solid #74C69D" }} alt={photoAlt} />
+          <PhotoTile src={images[0]} style={{ width: "100%", height: "100%", objectFit: large ? "contain" : "cover", borderRadius: large ? 0 : 18, border: large ? "none" : "1.5px solid #74C69D" }} alt={photoAlt} />
         </Item>
       </div>
     );
@@ -1274,7 +1274,7 @@ function PostMedia({ post: p, large, onOpen }) {
         {images.map((src, i) => (
           <div key={i} style={{ ...styles.postMediaScrollItem, ...(large ? { height: "100%" } : {}) }}>
             <Item>
-              <PhotoTile src={src} style={{ width: "100%", height: "100%", objectFit: large ? "contain" : "cover", borderRadius: 18, border: "1.5px solid #74C69D" }} alt={`${photoAlt} (${i + 1}/${images.length})`} />
+              <PhotoTile src={src} style={{ width: "100%", height: "100%", objectFit: large ? "contain" : "cover", borderRadius: large ? 0 : 18, border: large ? "none" : "1.5px solid #74C69D" }} alt={`${photoAlt} (${i + 1}/${images.length})`} />
             </Item>
           </div>
         ))}
@@ -1442,13 +1442,13 @@ function PostViewerModal({ post: p, onClose, onLike, onOpenComments, onOpenLiker
   return (
     <div style={styles.postViewerOverlay}>
       <div style={styles.postViewerTop}>
-        <button style={styles.iconBtn} onClick={onClose} aria-label="Back">
-          <ChevronLeft size={26} color="#FFFFFF" />
+        <button style={styles.postViewerIconBtn} onClick={onClose} aria-label="Back">
+          <ChevronLeft size={24} color="#FFFFFF" />
         </button>
         {isMine ? (
           <div style={{ position: "relative" }}>
-            <button style={styles.iconBtn} onClick={() => setMenuOpen((o) => !o)} aria-label="Post options">
-              <MoreHorizontal size={22} color="#FFFFFF" />
+            <button style={styles.postViewerIconBtn} onClick={() => setMenuOpen((o) => !o)} aria-label="Post options">
+              <MoreHorizontal size={20} color="#FFFFFF" />
             </button>
             {menuOpen && (
               <>
@@ -1478,9 +1478,9 @@ function PostViewerModal({ post: p, onClose, onLike, onOpenComments, onOpenLiker
       </div>
 
       <div style={styles.postViewerBottom}>
-        <button style={styles.postAuthorBtn} onClick={() => onOpenProfile(p.author)}>
-          <Avatar photo={authorPhoto} name={p.author} style={styles.postAvatar} />
-          <div style={{ flex: 1, textAlign: "left" }}>
+        <button style={{ ...styles.postAuthorBtn, ...styles.postViewerAuthorChip }} onClick={() => onOpenProfile(p.author)}>
+          <Avatar photo={authorPhoto} name={p.author} style={{ ...styles.postAvatar, width: 34, height: 34 }} />
+          <div style={{ textAlign: "left" }}>
             <div style={{ ...styles.cardName, color: "#FFFFFF" }}>{p.author}</div>
             <div style={styles.cardMeta}>
               {p.kind === "round" ? (
@@ -1494,7 +1494,7 @@ function PostViewerModal({ post: p, onClose, onLike, onOpenComments, onOpenLiker
           </div>
         </button>
 
-        {p.text && <div style={{ ...styles.noteText, color: "#FFFFFF", marginBottom: 12 }}>{p.text}</div>}
+        {p.text && <div style={{ ...styles.noteText, ...styles.postViewerCaptionChip, color: "#FFFFFF" }}>{p.text}</div>}
 
         <div style={styles.postViewerPillRow}>
           <button style={styles.postViewerPill} onClick={() => onLike(p.id)} aria-label="Golf clap">
@@ -3090,13 +3090,16 @@ const styles = {
   ghinModalCopy: { fontSize: 13, color: "#A3A199", lineHeight: 1.5, marginBottom: 14 },
   settingsRow: { width: "100%", background: "#232220", border: "1.5px solid #74C69D", borderRadius: 10, padding: "13px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", color: "#FFFFFF", fontSize: 13.5, marginBottom: 8 },
   modalOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", zIndex: 10 },
-  postViewerOverlay: { position: "fixed", inset: 0, background: "#000000", zIndex: 20, display: "flex", flexDirection: "column", fontFamily: "'Baloo 2', sans-serif" },
-  postViewerTop: { flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 12px" },
-  postViewerMediaWrap: { flex: 1, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center" },
-  postViewerBottom: { flexShrink: 0, padding: "12px 16px 18px" },
-  postViewerPillRow: { display: "flex", alignItems: "center", gap: 8, marginBottom: 12 },
-  postViewerPill: { display: "flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.08)", border: "none", borderRadius: 999, padding: "8px 14px", color: "#9C9990", fontSize: 13, fontWeight: 600 },
-  postViewerReplyBar: { display: "block", width: "100%", textAlign: "left", background: "rgba(255,255,255,0.08)", border: "none", borderRadius: 999, padding: "12px 16px", color: "#9C9990", fontSize: 14 },
+  postViewerOverlay: { position: "fixed", inset: 0, background: "#000000", zIndex: 20, overflow: "hidden", fontFamily: "'Baloo 2', sans-serif" },
+  postViewerMediaWrap: { position: "absolute", inset: 0, display: "flex", flexDirection: "column" },
+  postViewerTop: { position: "absolute", top: 0, left: 0, right: 0, zIndex: 2, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 12px" },
+  postViewerIconBtn: { background: "rgba(0,0,0,0.45)", border: "none", borderRadius: "50%", width: 38, height: 38, display: "flex", alignItems: "center", justifyContent: "center" },
+  postViewerBottom: { position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 2, padding: "12px 16px 18px", display: "flex", flexDirection: "column", gap: 10 },
+  postViewerAuthorChip: { display: "inline-flex", alignSelf: "flex-start", alignItems: "center", gap: 10, background: "rgba(0,0,0,0.45)", borderRadius: 999, padding: "6px 14px 6px 6px" },
+  postViewerCaptionChip: { alignSelf: "flex-start", background: "rgba(0,0,0,0.45)", borderRadius: 14, padding: "8px 14px" },
+  postViewerPillRow: { display: "flex", alignItems: "center", gap: 8 },
+  postViewerPill: { display: "flex", alignItems: "center", gap: 6, background: "rgba(0,0,0,0.45)", border: "none", borderRadius: 999, padding: "8px 14px", color: "#9C9990", fontSize: 13, fontWeight: 600 },
+  postViewerReplyBar: { display: "block", width: "100%", textAlign: "left", background: "rgba(0,0,0,0.45)", border: "none", borderRadius: 999, padding: "12px 16px", color: "#9C9990", fontSize: 14 },
   modal: { background: "#232220", width: "100%", maxWidth: 420, margin: "0 auto", borderRadius: "18px 18px 0 0", padding: 20, border: "1.5px solid #74C69D", borderBottom: "none" },
   modalHead: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
   modalTitle: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 19 },
