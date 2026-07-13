@@ -2589,7 +2589,7 @@ function BackAndSubmit({ onBack, onSubmit, disabled, label = "Save round" }) {
 // ---------- Styles ----------
 const styles = {
   loadingSpinner: { width: 34, height: 34, borderRadius: "50%", border: "3px solid #E4E1D8", borderTopColor: "#74C69D", animation: "spin 0.8s linear infinite" },
-  nameGateWrap: { minHeight: "100vh", maxWidth: 420, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 28px", backgroundColor: "#6B6D70", textAlign: "center", fontFamily: "'Baloo 2', sans-serif" },
+  nameGateWrap: { minHeight: "100vh", maxWidth: 420, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 28px", backgroundColor: "#6B6D70", backgroundImage: "radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), radial-gradient(rgba(0,0,0,0.06) 1px, transparent 1px)", backgroundSize: "22px 22px, 22px 22px", backgroundPosition: "0 0, 11px 11px", textAlign: "center", fontFamily: "'Baloo 2', sans-serif" },
   nameGateFlag: { width: 52, height: 52, borderRadius: 16, background: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14, boxShadow: "0 4px 14px rgba(0,0,0,0.12)" },
   nameGateWordmark: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 24, letterSpacing: 0, color: "#FFFFFF", marginBottom: 6 },
   nameGateCopy: { fontSize: 14, color: "rgba(255,255,255,0.8)", marginBottom: 18 },
@@ -2598,6 +2598,9 @@ const styles = {
   app: {
     fontFamily: "'Baloo 2', sans-serif",
     backgroundColor: "#6B6D70",
+    backgroundImage: "radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), radial-gradient(rgba(0,0,0,0.06) 1px, transparent 1px)",
+    backgroundSize: "22px 22px, 22px 22px",
+    backgroundPosition: "0 0, 11px 11px",
     minHeight: "100vh",
     maxWidth: 420,
     margin: "0 auto",
