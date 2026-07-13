@@ -391,6 +391,14 @@ function StickTalkWordmark() {
   return <img src="/stick-talk-wordmark.png" alt="Stick Talk" style={styles.stickTalkBadge} />;
 }
 
+function TeeIcon({ size = 16, color = "#FFFFFF" }) {
+  return (
+    <svg width={size} height={size * 1.25} viewBox="0 0 16 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M0 0 H16 L10 7 V17 L8 20 L6 17 V7 Z" fill={color} />
+    </svg>
+  );
+}
+
 function AuthGate() {
   const [mode, setMode] = useState("signin"); // signin | signup
   const [email, setEmail] = useState("");
@@ -555,6 +563,7 @@ export default function App() {
   const [viewingPost, setViewingPost] = useState(null); // postId
   const [homeCourse, setHomeCourse] = useState("");
   const [myPhoto, setMyPhoto] = useState(null);
+  const [myTees, setMyTees] = useState(2000); // Tees currency balance — display-only for now, no earn/spend wired up yet
   const [profiles, setProfiles] = useState({}); // { [name]: {initials, homeCourse, handicap, avgScore, bestRound, roundsCount, photo} }
   const [viewingProfile, setViewingProfile] = useState(null); // name of the profile being viewed, or null
   const [showSearch, setShowSearch] = useState(false);
@@ -597,6 +606,8 @@ export default function App() {
         const savedPhoto = loadPersonal("sticktalk:my-photo", null);
         if (savedPhoto) setMyPhoto(savedPhoto);
       }
+      const savedTees = loadPersonal("sticktalk:my-tees", null);
+      if (savedTees != null) setMyTees(savedTees);
       setNameLoaded(true);
     })();
   }, [session]);
@@ -1020,11 +1031,10 @@ export default function App() {
               <button style={styles.headerAvatarBtn} onClick={() => openProfile(myName)} aria-label="View your profile">
                 <Avatar photo={myPhoto} name={myName} style={styles.avatarSm} />
               </button>
-              {(tab === "home" || tab === "match") && (
-                <button style={styles.headerIconBtn} onClick={() => setShowSearch(true)} aria-label="Search">
-                  <Search size={19} color="#FFFFFF" />
-                </button>
-              )}
+              <div style={styles.teesBadge}>
+                <TeeIcon size={13} />
+                <span style={styles.teesBadgeText}>{myTees.toLocaleString()}</span>
+              </div>
             </div>
             <span style={styles.headerTitle}>
               {tab === "home" && <StickTalkWordmark />}
@@ -1033,6 +1043,11 @@ export default function App() {
               {tab === "profile" && "Profile"}
             </span>
             <div style={{ ...styles.headerSide, justifyContent: "flex-end" }}>
+              {(tab === "home" || tab === "match") && (
+                <button style={styles.headerIconBtn} onClick={() => setShowSearch(true)} aria-label="Search">
+                  <Search size={19} color="#FFFFFF" />
+                </button>
+              )}
               <button style={styles.headerIconBtn} onClick={() => setShowInbox(true)} aria-label="Notifications">
                 <Bell size={19} color="#FFFFFF" />
                 {pendingCount > 0 && <span style={styles.inboxBadge}>{pendingCount}</span>}
@@ -3108,6 +3123,8 @@ const styles = {
   headerSide: { display: "flex", alignItems: "center", gap: 9 },
   headerAvatarBtn: { background: "none", border: "none", padding: 0, display: "flex", flexShrink: 0 },
   headerIconBtn: { position: "relative", background: "rgba(237,230,214,0.08)", border: "none", borderRadius: 10, width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  teesBadge: { background: "rgba(237,230,214,0.08)", borderRadius: 10, height: 44, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "0 12px", flexShrink: 0 },
+  teesBadgeText: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 14, color: "#FFFFFF" },
   headerTitle: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 24, letterSpacing: 0, color: "#FFFFFF", justifySelf: "center", whiteSpace: "nowrap", textShadow: "0 2px 10px rgba(0,0,0,0.25)" },
   headerSearchInput: { flex: 1, background: "rgba(237,230,214,0.08)", border: "none", borderRadius: 9, padding: "9px 12px", color: "#FFFFFF", fontSize: 14 },
   inboxBadge: { position: "absolute", top: -4, right: -4, background: "#C1443A", color: "#FFFFFF", fontSize: 10, fontWeight: 700, borderRadius: 9, minWidth: 17, height: 17, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" },
