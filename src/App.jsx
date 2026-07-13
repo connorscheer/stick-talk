@@ -1451,8 +1451,12 @@ function PostMedia({ post: p, large, onOpen }) {
   // In the fullscreen viewer, tapping cycles through zoom levels instead of
   // opening anything further, and CSS transforms make an overflow:auto box
   // pannable by drag/scroll once the content is bigger than the box.
+  // touchAction "pan-x pan-y" (no "pinch-zoom") stops iOS/Android from
+  // handing a 2-finger pinch here to the browser's native page zoom — which
+  // would otherwise zoom the whole screen (comments, golf clap, everything)
+  // instead of just this media box. Tap-to-cycle stays the only zoom.
   const boxStyle = large
-    ? { width: "100%", height: "100%", overflow: "auto", scrollbarWidth: "none", msOverflowStyle: "none", cursor: zoom === ZOOM_STEPS[ZOOM_STEPS.length - 1] ? "zoom-out" : "zoom-in" }
+    ? { width: "100%", height: "100%", overflow: "auto", scrollbarWidth: "none", msOverflowStyle: "none", touchAction: "pan-x pan-y", cursor: zoom === ZOOM_STEPS[ZOOM_STEPS.length - 1] ? "zoom-out" : "zoom-in" }
     : { width: "100%", height: MEDIA_BOX_HEIGHT, overflow: "hidden" };
   // In the fullscreen viewer the media gets a bounded height (not the whole
   // screen) so the author/actions/reply bar below it sit in normal document
@@ -3364,8 +3368,8 @@ const styles = {
   ghinModalCopy: { fontSize: 13, color: "#A3A199", lineHeight: 1.5, marginBottom: 14 },
   settingsRow: { width: "100%", background: "#232220", border: "1.5px solid #74C69D", borderRadius: 10, padding: "13px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", color: "#FFFFFF", fontSize: 13.5, marginBottom: 8 },
   modalOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", zIndex: 10, animation: "overlayIn 200ms cubic-bezier(0.23, 1, 0.32, 1) both" },
-  postViewerOverlay: { position: "fixed", inset: 0, background: "#000000", zIndex: 20, display: "flex", flexDirection: "column", fontFamily: "'Baloo 2', sans-serif" },
-  postViewerScroll: { flex: 1, minHeight: 0, overflowY: "auto" },
+  postViewerOverlay: { position: "fixed", inset: 0, background: "#000000", zIndex: 20, display: "flex", flexDirection: "column", fontFamily: "'Baloo 2', sans-serif", touchAction: "pan-y" },
+  postViewerScroll: { flex: 1, minHeight: 0, overflowY: "auto", touchAction: "pan-y" },
   postViewerMediaWrap: { display: "flex", flexDirection: "column" },
   postViewerTop: { flexShrink: 0, position: "sticky", top: 0, zIndex: 2, background: "#000000", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px" },
   postViewerIconBtn: { background: "none", border: "none", borderRadius: "50%", width: 38, height: 38, display: "flex", alignItems: "center", justifyContent: "center" },
