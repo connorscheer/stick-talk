@@ -87,9 +87,28 @@ there within a few seconds.
    as your `.env` file)
 5. Click **Deploy**
 
-You'll get a real URL like `stick-talk.vercel.app` — no Claude account, no
-login, works on any phone browser. Add it to your home screen for the closest
-thing to a native app icon before you're ready for the real App Store build.
+You'll get a real URL like `stick-talk.vercel.app` — no Claude account
+required, works on any phone browser. Add it to your home screen for the
+closest thing to a native app icon before you're ready for the real App
+Store build.
+
+## 7. Accounts (sign in with email + password)
+
+The app now gates entry behind a real account, powered by Supabase Auth —
+same project as everything else, no extra service to set up. The email
+provider is on by default, so there's nothing to configure to get sign-up
+and sign-in working.
+
+One optional tweak: by default Supabase sends a confirmation email before a
+new sign-up can log in. For a small group of friends testing this, you may
+want to skip that step — go to **Authentication → Providers → Email** in
+your Supabase project and turn off **Confirm email**. With it off, sign-up
+logs a person straight in with no email round-trip.
+
+A person's display name, home course, and photo now live in the shared
+`sticktalk_kv` table keyed by their account (not just this device's
+`localStorage`), so signing in on a new phone brings their identity with
+them instead of asking them to re-enter it.
 
 ## Notes for later
 

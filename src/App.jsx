@@ -123,8 +123,10 @@ function Avatar({ photo, name, style }) {
 // ---------- Shared storage helpers ----------
 // Everyone who opens this website reads/writes the same rows in the Supabase
 // `sticktalk_kv` table, which is what makes the feed a real multi-person feed
-// instead of a private per-viewer demo. No login required — see README.md
-// for the one-time Supabase setup (table + policies).
+// instead of a private per-viewer demo. Reading/writing these rows doesn't
+// require being signed in — see README.md for the one-time Supabase setup
+// (table + policies). Signed-in accounts (Supabase Auth) are a separate
+// layer on top, used to carry a person's identity across devices.
 const STORAGE_KEYS = { posts: "sticktalk:posts", name: "sticktalk:my-name", profiles: "sticktalk:profiles", matches: "sticktalk:matches" };
 
 async function loadShared(key, seed) {
@@ -374,6 +376,92 @@ function BrandMark({ size = 24, poleColor = "#000000" }) {
   );
 }
 
+function AuthGate() {
+  const [mode, setMode] = useState("signin"); // signin | signup
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function handleSubmit() {
+    setError("");
+    setInfo("");
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !password) {
+      setError("Enter an email and password.");
+      return;
+    }
+    setBusy(true);
+    try {
+      if (mode === "signin") {
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email: trimmedEmail, password });
+        if (signInError) throw signInError;
+      } else {
+        const { data, error: signUpError } = await supabase.auth.signUp({ email: trimmedEmail, password });
+        if (signUpError) throw signUpError;
+        if (!data.session) {
+          setInfo("Check your email to confirm your account, then sign in.");
+        }
+      }
+    } catch (e) {
+      setError(e.message || "Something went wrong.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div style={styles.nameGateWrap}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&display=swap');
+        * { box-sizing: border-box; }
+        button { font-family: inherit; cursor: pointer; }
+        input { font-family: inherit; }
+      `}</style>
+      <div style={styles.nameGateFlag}>
+        <BrandMark size={26} />
+      </div>
+      <div style={styles.nameGateWordmark}>STICK TALK</div>
+      <p style={styles.nameGateCopy}>{mode === "signin" ? "Sign in to your account" : "Create an account"}</p>
+      <input
+        style={styles.nameGateInput}
+        placeholder="Email"
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        autoFocus
+      />
+      <input
+        style={{ ...styles.nameGateInput, marginTop: 10 }}
+        placeholder="Password"
+        type="password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+      />
+      {error && <p style={{ ...styles.nameGateFoot, color: "#E27D6E", marginTop: 0 }}>{error}</p>}
+      {info && <p style={{ ...styles.nameGateFoot, color: "#74C69D", marginTop: 0 }}>{info}</p>}
+      <button style={{ ...styles.logBtn, opacity: busy ? 0.6 : 1, marginTop: 4 }} disabled={busy} onClick={handleSubmit}>
+        {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Sign up"}
+      </button>
+      <p style={styles.nameGateFoot}>
+        {mode === "signin" ? "New here? " : "Already have an account? "}
+        <span
+          style={{ color: "#74C69D", fontWeight: 700 }}
+          onClick={() => {
+            setMode(mode === "signin" ? "signup" : "signin");
+            setError("");
+            setInfo("");
+          }}
+        >
+          {mode === "signin" ? "Create an account" : "Sign in"}
+        </span>
+      </p>
+    </div>
+  );
+}
+
 function NameGate({ onSubmit }) {
   const [name, setName] = useState("");
   return (
@@ -406,6 +494,7 @@ function NameGate({ onSubmit }) {
 }
 
 export default function App() {
+  const [session, setSession] = useState(undefined); // undefined = still checking, null = signed out
   const [tab, setTab] = useState("home");
   const [rounds, setRounds] = useState(initialRounds);
   const [golfers, setGolfers] = useState(initialGolfers);
@@ -438,19 +527,46 @@ export default function App() {
 
   const myInitials = initialsOf(myName);
 
-  // Load identity + shared feed data once on mount.
+  // Track the Supabase Auth session. getSession() picks up a session already
+  // persisted (in this browser's localStorage by the Supabase SDK) so return
+  // visits on the same device stay signed in; a new device has no persisted
+  // session, so onAuthStateChange only fires once the user signs in there.
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session ?? null));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  // Once signed in, load this account's identity (name/home course/photo)
+  // from shared storage keyed by user id, so it follows the account to any
+  // device instead of staying stuck on the device it was entered on. Falls
+  // back to this device's localStorage for anyone who set up their profile
+  // before accounts existed.
+  useEffect(() => {
+    if (!session) return;
+    (async () => {
+      const account = await loadShared(`sticktalk:account:${session.user.id}`, null);
+      if (account) {
+        if (account.name) setMyName(account.name);
+        setHomeCourse(account.homeCourse || "Pinehurst Municipal");
+        if (account.photo) setMyPhoto(account.photo);
+      } else {
+        const savedName = loadPersonal(STORAGE_KEYS.name, null);
+        if (savedName) setMyName(savedName);
+        const savedCourse = loadPersonal("sticktalk:my-home-course", null);
+        setHomeCourse(savedCourse || "Pinehurst Municipal");
+        const savedPhoto = loadPersonal("sticktalk:my-photo", null);
+        if (savedPhoto) setMyPhoto(savedPhoto);
+      }
+      setNameLoaded(true);
+    })();
+  }, [session]);
+
+  // Load the shared feed once on mount — it isn't gated behind auth.
   useEffect(() => {
     (async () => {
-      const savedName = await loadPersonal(STORAGE_KEYS.name, null);
-      if (savedName) setMyName(savedName);
-      setNameLoaded(true);
-
-      const savedCourse = await loadPersonal("sticktalk:my-home-course", null);
-      setHomeCourse(savedCourse || "Pinehurst Municipal");
-
-      const savedPhoto = await loadPersonal("sticktalk:my-photo", null);
-      if (savedPhoto) setMyPhoto(savedPhoto);
-
       const loadedPosts = await loadShared(STORAGE_KEYS.posts, null);
       if (loadedPosts) {
         setPosts(loadedPosts);
@@ -543,14 +659,25 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataLoaded, myName, myInitials, homeCourse, rounds, myPhoto]);
 
+  // Merges one field into this account's shared identity record so it's
+  // there waiting the next time this person signs in on any device.
+  async function saveAccountField(field, value) {
+    if (!session) return;
+    const key = `sticktalk:account:${session.user.id}`;
+    const existing = (await loadShared(key, {})) || {};
+    await saveShared(key, { ...existing, [field]: value });
+  }
+
   function saveMyPhoto(dataUrl) {
     setMyPhoto(dataUrl);
     savePersonal("sticktalk:my-photo", dataUrl);
+    saveAccountField("photo", dataUrl);
   }
 
   function saveMyHomeCourse(course) {
     setHomeCourse(course);
     savePersonal("sticktalk:my-home-course", course);
+    saveAccountField("homeCourse", course);
   }
 
   function openProfile(name) {
@@ -562,9 +689,11 @@ export default function App() {
     if (!trimmed) return;
     setMyName(trimmed);
     savePersonal(STORAGE_KEYS.name, trimmed);
+    saveAccountField("name", trimmed);
   }
 
-  function logOut() {
+  async function logOut() {
+    await supabase.auth.signOut();
     setMyName(null);
     clearPersonal(STORAGE_KEYS.name);
   }
@@ -779,13 +908,17 @@ export default function App() {
 
   const pendingCount = inbox.filter((r) => r.status === "pending").length;
 
-  if (!dataLoaded) {
+  if (session === undefined || (session && (!dataLoaded || !nameLoaded))) {
     return (
       <div style={{ ...styles.app, alignItems: "center", justifyContent: "center" }}>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         <div style={styles.loadingSpinner} />
       </div>
     );
+  }
+
+  if (!session) {
+    return <AuthGate />;
   }
 
   if (!myName) {
