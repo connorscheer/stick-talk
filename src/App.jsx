@@ -2348,6 +2348,7 @@ function Scorecard({ round }) {
           return (
             <div key={h.hole} style={styles.scorecardCell}>
               <span style={styles.scorecardCellNum}>{h.hole}</span>
+              <span style={styles.scorecardCellPar}>Par {par}</span>
               <div style={styles.scoreMarkSlot}>
                 <ScoreMark score={h.strokes} diff={d} />
               </div>
@@ -3225,6 +3226,11 @@ const styles = {
   scorecardHoleRow: { display: "flex", gap: 4 },
   scorecardCell: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", background: "#EDE4CC", borderRadius: 10, padding: "8px 0" },
   scorecardCellNum: { fontSize: 10.5, color: "#6B6963", fontWeight: 600 },
+  // Same placeholder-par idea as the score-entry grid — real per-course par
+  // data will replace PAR_LAYOUT here later. The card's box size is locked
+  // (see HANDOFF.md) — this just uses the space that used to sit empty at
+  // the bottom, it doesn't grow the card.
+  scorecardCellPar: { fontSize: 8.5, color: "#74C69D", fontWeight: 600, marginTop: 1 },
   scorecardCellScore: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 16, marginTop: 2 },
   scoreMarkRing: { display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 24, height: 24, border: "1.5px solid #000000", boxSizing: "border-box" },
   scoreMarkOuterRing: { minWidth: 30, height: 30, padding: 2 },
