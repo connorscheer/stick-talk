@@ -3196,7 +3196,13 @@ const styles = {
   postMediaScrollItem: { flex: "0 0 100%", scrollSnapAlign: "start" },
   postMediaDots: { display: "flex", justifyContent: "center", gap: 6, marginTop: 8 },
   postMediaDot: { width: 6, height: 6, borderRadius: "50%" },
-  scorecardWrap: { background: "#F5EFDD", border: "1.5px solid #74C69D", borderRadius: 18, padding: "16px 14px", marginTop: 12 },
+  // height:"100%" is the actual fix for the scorecard-vs-photo size
+  // mismatch: without it, this card's own cream background/border only grew
+  // as tall as its content (~350-380px) and sat top-aligned inside the
+  // taller fixed-height box used everywhere in the feed, leaving a gap of
+  // plain background below it — so it visibly looked shorter than a photo
+  // in the same slot, even though the invisible bounding box was identical.
+  scorecardWrap: { background: "#F5EFDD", border: "1.5px solid #74C69D", borderRadius: 18, padding: "16px 14px", marginTop: 12, height: "100%", display: "flex", flexDirection: "column" },
   scorecardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, padding: "0 2px" },
   scorecardTitle: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 16, color: "#000000" },
   scorecardTeeLine: { fontSize: 12, color: "#6B6963", marginTop: 2 },
