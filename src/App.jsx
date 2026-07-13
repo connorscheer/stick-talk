@@ -1172,6 +1172,7 @@ const MEDIA_BOX_HEIGHT = 400;
 function PostMedia({ post: p, large, onOpen }) {
   const [active, setActive] = useState(0);
   const [zoom, setZoom] = useState(1);
+  const scrollRef = useRef(null);
   const images = p.images || [];
   const hasScorecard = p.kind === "round";
   const itemCount = (hasScorecard ? 1 : 0) + images.length;
