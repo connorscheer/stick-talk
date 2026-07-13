@@ -1530,12 +1530,23 @@ function PostMedia({ post: p, large, onOpen }) {
 
   if (itemCount === 1) {
     if (hasScorecard) {
-      // Scorecards aren't zoomable and don't need the fixed-height box —
-      // they render at their natural height so nothing is ever clipped;
-      // the body content below just scrolls independently if it runs long.
+      if (!large) {
+        // Feed card: fixed-height box, tapping opens the fullscreen viewer.
+        return (
+          <div style={styles.postScorecardWrap}>
+            <Item>
+              <Scorecard round={p.round} />
+            </Item>
+          </div>
+        );
+      }
+      // Fullscreen viewer: scorecards aren't zoomable and don't need the
+      // fixed-height box — they render at their natural height so nothing
+      // is ever clipped; the body content below just scrolls independently
+      // if it runs long.
       return (
-        <div style={large ? styles.postScorecardWrapLarge : styles.postScorecardWrap}>
-          <Scorecard round={p.round} large={large} />
+        <div style={styles.postScorecardWrapLarge}>
+          <Scorecard round={p.round} large />
         </div>
       );
     }
@@ -3557,26 +3568,26 @@ const styles = {
   // pixels off the bottom — same box, but visibly sunk. Any spacing above
   // the card belongs on the wrapper (postScorecardWrap / postMediaScroll),
   // not here.
-  scorecardWrap: { background: "#F5EFDD", border: "1.5px solid #74C69D", borderRadius: 18, padding: "16px 14px", height: "100%", display: "flex", flexDirection: "column" },
-  scorecardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, padding: "0 2px" },
+  scorecardWrap: { background: "#F5EFDD", border: "1.5px solid #74C69D", borderRadius: 18, padding: "13px 12px", height: "100%", display: "flex", flexDirection: "column" },
+  scorecardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8, padding: "0 2px" },
   scorecardTitle: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 16, color: "#000000" },
   scorecardTeeLine: { fontSize: 12, color: "#6B6963", marginTop: 2 },
-  scorecardHoleRow: { display: "flex", gap: 7 },
-  scorecardCell: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 },
-  scorecardCellNumBadge: { width: "100%", textAlign: "center", fontSize: 12, color: "#9C9990", fontWeight: 700, background: "#EDE4CC", borderRadius: 8, padding: "6px 0", boxSizing: "border-box" },
-  scorecardCellMain: { width: "100%", background: "#EDE4CC", borderRadius: 12, padding: "10px 0 12px", display: "flex", flexDirection: "column", alignItems: "center", boxSizing: "border-box" },
+  scorecardHoleRow: { display: "flex", gap: 6 },
+  scorecardCell: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 },
+  scorecardCellNumBadge: { width: "100%", textAlign: "center", fontSize: 12, color: "#9C9990", fontWeight: 700, background: "#EDE4CC", borderRadius: 8, padding: "4px 0", boxSizing: "border-box" },
+  scorecardCellMain: { width: "100%", background: "#EDE4CC", borderRadius: 12, padding: "6px 0 8px", display: "flex", flexDirection: "column", alignItems: "center", boxSizing: "border-box" },
   // Same placeholder-par idea as the score-entry grid — real per-course par
   // data will replace PAR_LAYOUT here later. The card's box size is locked
   // (see HANDOFF.md) — this just uses the space that used to sit empty at
   // the bottom, it doesn't grow the card.
   scorecardCellPar: { fontFamily: "'Baloo 2', sans-serif", fontSize: 15, color: "#000000", fontWeight: 800 },
-  scorecardCellDivider: { width: "82%", height: 1, background: "#9C9990", margin: "8px 0 6px" },
+  scorecardCellDivider: { width: "82%", height: 1, background: "#9C9990", margin: "5px 0 4px" },
   scorecardCellScore: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 16, marginTop: 2 },
   scoreMarkRing: { display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 24, height: 24, border: "1.5px solid #000000", boxSizing: "border-box" },
   scoreMarkOuterRing: { minWidth: 30, height: 30, padding: 2 },
-  scoreMarkSlot: { height: 32, display: "flex", alignItems: "center", justifyContent: "center" },
-  scorecardDivider: { width: "100%", height: 1, background: "#C9C2AC", margin: "16px 0", flexShrink: 0 },
-  scorecardSummaryRow: { display: "flex", marginTop: 14, paddingTop: 14 },
+  scoreMarkSlot: { height: 30, display: "flex", alignItems: "center", justifyContent: "center" },
+  scorecardDivider: { width: "100%", height: 1, background: "#C9C2AC", margin: "10px 0", flexShrink: 0 },
+  scorecardSummaryRow: { display: "flex", marginTop: 10, paddingTop: 10 },
   scorecardSummaryItem: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center" },
   scorecardSummaryLabel: { fontSize: 10.5, color: "#6B6963", fontWeight: 700, letterSpacing: 0.5 },
   scorecardSummaryValue: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 24, color: "#000000", marginTop: 3 },
