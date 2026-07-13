@@ -1152,7 +1152,9 @@ const ZOOM_STEPS = [1, 1.8, 2.6];
 function PostMedia({ post: p, large, onOpen }) {
   const [active, setActive] = useState(0);
   const [zoom, setZoom] = useState(1);
+  const [scorecardHeight, setScorecardHeight] = useState(null);
   const scrollRef = useRef(null);
+  const scorecardRef = useRef(null);
   const images = p.images || [];
   const hasScorecard = p.kind === "round";
   const itemCount = (hasScorecard ? 1 : 0) + images.length;
@@ -1164,36 +1166,54 @@ function PostMedia({ post: p, large, onOpen }) {
     setZoom(1);
   }, [active]);
 
+  // The scorecard renders at its normal, unscaled size — measure it so any
+  // photos in the same post can be cropped (object-fit:cover) to that exact
+  // height instead of a guessed constant, which either left dead space below
+  // a shorter scorecard or cropped a taller one.
+  useEffect(() => {
+    if (large || !hasScorecard || !scorecardRef.current) return;
+    const el = scorecardRef.current;
+    function recompute() {
+      setScorecardHeight(el.offsetHeight);
+    }
+    recompute();
+    const ro = new ResizeObserver(recompute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [large, hasScorecard, p.round]);
+
   if (itemCount === 0) return null;
 
   function cycleZoom() {
     setZoom((z) => ZOOM_STEPS[(ZOOM_STEPS.indexOf(z) + 1) % ZOOM_STEPS.length]);
   }
 
-  // A fixed height (the scorecard's normal, unscaled size) rather than an
-  // aspect-ratio — photos are cropped with object-fit:cover to match it, so
-  // scorecards and photos are always exactly the same box, and the
-  // scorecard itself is never stretched or shrunk to fit. In the fullscreen
-  // viewer, tapping cycles through zoom levels instead of opening anything
-  // further, and CSS transforms make an overflow:auto box pannable by
-  // drag/scroll once the content is bigger than the box.
+  // In the fullscreen viewer, tapping cycles through zoom levels instead of
+  // opening anything further, and CSS transforms make an overflow:auto box
+  // pannable by drag/scroll once the content is bigger than the box.
   const boxStyle = large
     ? { width: "100%", height: "100%", overflow: "auto", scrollbarWidth: "none", msOverflowStyle: "none", cursor: zoom === ZOOM_STEPS[ZOOM_STEPS.length - 1] ? "zoom-out" : "zoom-in" }
-    : { width: "100%", height: 420, overflow: "hidden" };
+    : { width: "100%", overflow: "hidden" };
   // In the fullscreen viewer the media should stretch to fill the space its
   // flex parent gives it, rather than sizing to its own content.
   const wrapStyle = large ? { flex: 1, minHeight: 0, display: "flex", flexDirection: "column", margin: 0 } : undefined;
+  // A photo box always matches the scorecard's actual measured height when
+  // this post has one, so the two are always exactly the same size — with
+  // no scorecard to match (a photo-only post), fall back to a normal aspect
+  // ratio instead.
+  const photoBoxStyle = large ? {} : hasScorecard ? { height: scorecardHeight || "auto" } : { aspectRatio: "4 / 3" };
 
-  function Item({ children }) {
+  function Item({ children, style: styleOverride }) {
+    const finalStyle = large ? boxStyle : { ...boxStyle, ...styleOverride };
     if (!large) {
       return (
-        <div style={boxStyle} onClick={onOpen}>
+        <div style={finalStyle} onClick={onOpen}>
           {children}
         </div>
       );
     }
     return (
-      <div style={boxStyle} onClick={cycleZoom}>
+      <div style={finalStyle} onClick={cycleZoom}>
         <div style={{ width: "100%", height: "100%", transform: `scale(${zoom})`, transformOrigin: "center center", transition: "transform 0.2s ease" }}>
           {children}
         </div>
@@ -1206,14 +1226,16 @@ function PostMedia({ post: p, large, onOpen }) {
       return (
         <div style={{ ...styles.postScorecardWrap, ...wrapStyle }}>
           <Item>
-<Scorecard round={p.round} />
+            <div ref={scorecardRef}>
+              <Scorecard round={p.round} />
+            </div>
           </Item>
         </div>
       );
     }
     return (
       <div style={{ ...styles.postImageWrap, ...wrapStyle }}>
-        <Item>
+        <Item style={photoBoxStyle}>
           <PhotoTile src={images[0]} style={{ width: "100%", height: "100%", objectFit: large ? "contain" : "cover", borderRadius: large ? 0 : 18, border: large ? "none" : "1.5px solid #74C69D" }} alt={photoAlt} />
         </Item>
       </div>
@@ -1233,13 +1255,15 @@ function PostMedia({ post: p, large, onOpen }) {
         {hasScorecard && (
           <div style={{ ...styles.postMediaScrollItem, ...(large ? { height: "100%" } : {}) }}>
             <Item>
-  <Scorecard round={p.round} />
+              <div ref={scorecardRef}>
+                <Scorecard round={p.round} />
+              </div>
             </Item>
           </div>
         )}
         {images.map((src, i) => (
           <div key={i} style={{ ...styles.postMediaScrollItem, ...(large ? { height: "100%" } : {}) }}>
-            <Item>
+            <Item style={photoBoxStyle}>
               <PhotoTile src={src} style={{ width: "100%", height: "100%", objectFit: large ? "contain" : "cover", borderRadius: large ? 0 : 18, border: large ? "none" : "1.5px solid #74C69D" }} alt={`${photoAlt} (${i + 1}/${images.length})`} />
             </Item>
           </div>
