@@ -2745,6 +2745,7 @@ function LogRoundModal({ onClose, onSubmit }) {
                 return (
                   <div key={h} style={styles.holeGridCell}>
                     <span style={styles.holeGridNum}>{h}</span>
+                    <span style={styles.holeGridPar}>Par {PAR_LAYOUT[i]}</span>
                     <input
                       ref={(el) => (scoreInputRefs.current[h] = el)}
                       style={styles.holeGridInput}
@@ -2765,6 +2766,7 @@ function LogRoundModal({ onClose, onSubmit }) {
                 return (
                   <div key={h} style={styles.holeGridCell}>
                     <span style={styles.holeGridNum}>{h}</span>
+                    <span style={styles.holeGridPar}>Par {PAR_LAYOUT[i]}</span>
                     <input
                       ref={(el) => (scoreInputRefs.current[h] = el)}
                       style={styles.holeGridInput}
@@ -3155,7 +3157,10 @@ const styles = {
   holeGridSectionLabel: { fontSize: 11, color: "#9C9990", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, margin: "10px 2px 6px" },
   holeGridRow: { display: "flex", gap: 4, marginBottom: 4 },
   holeGridCell: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", background: "#171513", borderRadius: 8, padding: "6px 2px 8px" },
-  holeGridNum: { fontSize: 10, color: "#9C9990", fontWeight: 700, marginBottom: 4 },
+  holeGridNum: { fontSize: 10, color: "#9C9990", fontWeight: 700, marginBottom: 2 },
+  // Placeholder par until real per-course par data is wired in — currently
+  // just the generic PAR_LAYOUT used everywhere else as a default.
+  holeGridPar: { fontSize: 8.5, color: "#74C69D", fontWeight: 600, marginBottom: 4 },
   holeGridInput: { width: "100%", background: "#232220", border: "1.5px solid #74C69D", borderRadius: 6, padding: "5px 0", color: "#FFFFFF", fontSize: 14, fontWeight: 700, textAlign: "center" },
 
   // ---- Composer / feed extras ----
