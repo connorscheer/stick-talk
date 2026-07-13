@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, useLayoutEffect } from "react";
 import { Flag, TrendingUp, TrendingDown, Minus, Users, User, MessageCircle, Plus, MapPin, X, SlidersHorizontal, Award, ChevronRight, ChevronLeft, Landmark, Navigation, Check, Image as ImageIcon, Camera, Send, MoreHorizontal, Trash2, Search, Bell, Share2 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { supabase } from "./supabaseClient";
@@ -1170,7 +1170,7 @@ function PostMedia({ post: p, large, onOpen }) {
   // photos in the same post can be cropped (object-fit:cover) to that exact
   // height instead of a guessed constant, which either left dead space below
   // a shorter scorecard or cropped a taller one.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (large || !hasScorecard || !scorecardRef.current) return;
     const el = scorecardRef.current;
     function recompute() {
@@ -1200,8 +1200,11 @@ function PostMedia({ post: p, large, onOpen }) {
   // A photo box always matches the scorecard's actual measured height when
   // this post has one, so the two are always exactly the same size — with
   // no scorecard to match (a photo-only post), fall back to a normal aspect
-  // ratio instead.
-  const photoBoxStyle = large ? {} : hasScorecard ? { height: scorecardHeight || "auto" } : { aspectRatio: "4 / 3" };
+  // ratio instead. Falling back to "auto" height before the measurement
+  // arrives would let the <img> size itself to its own natural aspect
+  // ratio (often much taller or shorter than the scorecard), so a bounded
+  // 4:3 guess is used until the real measurement lands, never "auto".
+  const photoBoxStyle = large ? {} : hasScorecard ? (scorecardHeight ? { height: scorecardHeight } : { aspectRatio: "4 / 3" }) : { aspectRatio: "4 / 3" };
 
   function Item({ children, style: styleOverride }) {
     const finalStyle = large ? boxStyle : { ...boxStyle, ...styleOverride };
