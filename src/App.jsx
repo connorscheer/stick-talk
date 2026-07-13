@@ -1112,6 +1112,65 @@ function MatchConfirmedTile({ post }) {
   );
 }
 
+// A round's scorecard plus any photos, as one swipeable strip when there's
+// more than one item — dot indicators replace the native scrollbar, and
+// scrolling is locked to horizontal so a vertical swipe on mobile scrolls the
+// feed instead of fighting with the carousel.
+function PostMedia({ post: p }) {
+  const [active, setActive] = useState(0);
+  const scrollRef = useRef(null);
+  const images = p.images || [];
+  const hasScorecard = p.kind === "round";
+  const itemCount = (hasScorecard ? 1 : 0) + images.length;
+  const photoAlt = p.kind === "round" ? `${p.author}'s round at ${p.round.course}` : `Photo shared by ${p.author}`;
+
+  if (itemCount === 0) return null;
+
+  if (itemCount === 1) {
+    if (hasScorecard) {
+      return (
+        <div style={styles.postScorecardWrap}>
+          <Scorecard round={p.round} />
+        </div>
+      );
+    }
+    return (
+      <div style={styles.postImageWrap}>
+        <PhotoTile src={images[0]} style={{ width: "100%", aspectRatio: "4 / 3", borderRadius: 18, border: "1.5px solid #74C69D" }} alt={photoAlt} />
+      </div>
+    );
+  }
+
+  function handleScroll() {
+    const el = scrollRef.current;
+    if (!el) return;
+    const i = Math.round(el.scrollLeft / el.clientWidth);
+    setActive(Math.max(0, Math.min(itemCount - 1, i)));
+  }
+
+  return (
+    <div>
+      <div ref={scrollRef} style={styles.postMediaScroll} onScroll={handleScroll}>
+        {hasScorecard && (
+          <div style={styles.postMediaScrollItem}>
+            <Scorecard round={p.round} />
+          </div>
+        )}
+        {images.map((src, i) => (
+          <div key={i} style={styles.postMediaScrollItem}>
+            <PhotoTile src={src} style={{ width: "100%", height: "100%", aspectRatio: "4 / 3", borderRadius: 18, border: "1.5px solid #74C69D" }} alt={`${photoAlt} (${i + 1}/${images.length})`} />
+          </div>
+        ))}
+      </div>
+      <div style={styles.postMediaDots}>
+        {Array.from({ length: itemCount }).map((_, i) => (
+          <span key={i} style={{ ...styles.postMediaDot, background: i === active ? "#74C69D" : "#4A4844" }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function PostCard({ post: p, onLike, onOpenComments, onOpenLikers, onDelete, myName, onOpenProfile, authorPhoto, profiles }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const kindMeta = {
@@ -1182,48 +1241,7 @@ function PostCard({ post: p, onLike, onOpenComments, onOpenLikers, onDelete, myN
 
       {p.text && <div style={styles.noteText}>{p.text}</div>}
 
-      {(() => {
-        const images = p.images || [];
-        const hasScorecard = p.kind === "round";
-        const itemCount = (hasScorecard ? 1 : 0) + images.length;
-        const photoAlt = p.kind === "round" ? `${p.author}'s round at ${p.round.course}` : `Photo shared by ${p.author}`;
-
-        if (itemCount === 0) return null;
-
-        // A single item (just a scorecard, or just one photo) renders inline
-        // like before. Two or more items become a horizontal swipeable strip
-        // instead of stacking vertically, so a round + photos reads like one
-        // scrollable "carousel" rather than a long scroll of separate blocks.
-        if (itemCount === 1) {
-          if (hasScorecard) {
-            return (
-              <div style={styles.postScorecardWrap}>
-                <Scorecard round={p.round} />
-              </div>
-            );
-          }
-          return (
-            <div style={styles.postImageWrap}>
-              <PhotoTile src={images[0]} style={{ width: "100%", aspectRatio: "4 / 3", borderRadius: 18, border: "1.5px solid #74C69D" }} alt={photoAlt} />
-            </div>
-          );
-        }
-
-        return (
-          <div style={styles.postMediaScroll}>
-            {hasScorecard && (
-              <div style={styles.postMediaScrollItem}>
-                <Scorecard round={p.round} />
-              </div>
-            )}
-            {images.map((src, i) => (
-              <div key={i} style={styles.postMediaScrollItem}>
-                <PhotoTile src={src} style={{ width: "100%", height: "100%", aspectRatio: "4 / 3", borderRadius: 18, border: "1.5px solid #74C69D" }} alt={`${photoAlt} (${i + 1}/${images.length})`} />
-              </div>
-            ))}
-          </div>
-        );
-      })()}
+      <PostMedia post={p} />
 
       {likedBy.length === 0 ? (
         <div style={styles.socialLine}>Be the first to give a golf clap!</div>
@@ -2937,8 +2955,10 @@ const styles = {
   switchThumb: { width: 18, height: 18, borderRadius: "50%", background: "#EDE6D6", transition: "transform 0.15s ease" },
   postImageWrap: { marginTop: 10 },
   postScorecardWrap: {},
-  postMediaScroll: { display: "flex", gap: 10, overflowX: "auto", scrollSnapType: "x mandatory", marginTop: 10, paddingBottom: 2 },
+  postMediaScroll: { display: "flex", gap: 10, overflowX: "auto", overflowY: "hidden", touchAction: "pan-x", overscrollBehaviorY: "contain", scrollSnapType: "x mandatory", scrollbarWidth: "none", msOverflowStyle: "none", marginTop: 10 },
   postMediaScrollItem: { flex: "0 0 100%", scrollSnapAlign: "start" },
+  postMediaDots: { display: "flex", justifyContent: "center", gap: 6, marginTop: 8 },
+  postMediaDot: { width: 6, height: 6, borderRadius: "50%" },
   scorecardWrap: { background: "#F5EFDD", border: "1.5px solid #74C69D", borderRadius: 18, padding: "16px 14px", marginTop: 12 },
   scorecardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, padding: "0 2px" },
   scorecardTitle: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 16, color: "#000000" },
