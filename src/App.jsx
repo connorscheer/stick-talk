@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect, useLayoutEffect } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { Flag, TrendingUp, TrendingDown, Minus, Users, User, MessageCircle, Plus, MapPin, X, SlidersHorizontal, Award, ChevronRight, ChevronLeft, Landmark, Navigation, Check, Image as ImageIcon, Camera, Send, MoreHorizontal, Trash2, Search, Bell, Share2 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { supabase } from "./supabaseClient";
@@ -1149,12 +1149,16 @@ function MatchConfirmedTile({ post }) {
 // feed instead of fighting with the carousel.
 const ZOOM_STEPS = [1, 1.8, 2.6];
 
+// Fixed box height (px) shared by every scorecard and photo in the feed —
+// measured from real posted scorecards (they range ~332-379px depending on
+// whether the tee/yardage line is shown), with a little headroom so nothing
+// ever clips. Deliberately a hardcoded constant, not a live measurement —
+// it should never shift based on content.
+const MEDIA_BOX_HEIGHT = 400;
+
 function PostMedia({ post: p, large, onOpen }) {
   const [active, setActive] = useState(0);
   const [zoom, setZoom] = useState(1);
-  const [scorecardHeight, setScorecardHeight] = useState(null);
-  const scrollRef = useRef(null);
-  const scorecardRef = useRef(null);
   const images = p.images || [];
   const hasScorecard = p.kind === "round";
   const itemCount = (hasScorecard ? 1 : 0) + images.length;
@@ -1165,22 +1169,6 @@ function PostMedia({ post: p, large, onOpen }) {
   useEffect(() => {
     setZoom(1);
   }, [active]);
-
-  // The scorecard renders at its normal, unscaled size — measure it so any
-  // photos in the same post can be cropped (object-fit:cover) to that exact
-  // height instead of a guessed constant, which either left dead space below
-  // a shorter scorecard or cropped a taller one.
-  useLayoutEffect(() => {
-    if (large || !hasScorecard || !scorecardRef.current) return;
-    const el = scorecardRef.current;
-    function recompute() {
-      setScorecardHeight(el.offsetHeight);
-    }
-    recompute();
-    const ro = new ResizeObserver(recompute);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [large, hasScorecard, p.round]);
 
   if (itemCount === 0) return null;
 
@@ -1193,33 +1181,21 @@ function PostMedia({ post: p, large, onOpen }) {
   // pannable by drag/scroll once the content is bigger than the box.
   const boxStyle = large
     ? { width: "100%", height: "100%", overflow: "auto", scrollbarWidth: "none", msOverflowStyle: "none", cursor: zoom === ZOOM_STEPS[ZOOM_STEPS.length - 1] ? "zoom-out" : "zoom-in" }
-    : { width: "100%", overflow: "hidden" };
+    : { width: "100%", height: MEDIA_BOX_HEIGHT, overflow: "hidden" };
   // In the fullscreen viewer the media should stretch to fill the space its
   // flex parent gives it, rather than sizing to its own content.
   const wrapStyle = large ? { flex: 1, minHeight: 0, display: "flex", flexDirection: "column", margin: 0 } : undefined;
-  // Both the scorecard's own box and any photo boxes in the same post get
-  // this exact same explicit height (not "auto" for one and a number for
-  // the other) — relying on flexbox cross-axis stretch to equalize an
-  // "auto" box against a fixed-height box left a small residual mismatch,
-  // since stretch only guarantees the *outer* flex item matches, not the
-  // inner content box. Forcing the identical number on both removes any
-  // ambiguity. Falls back to a 4:3-ish guess until the scorecard is
-  // measured, and to a plain 4:3 box when there's no scorecard at all.
-  const boxHeight = hasScorecard ? scorecardHeight || 420 : null;
-  const scorecardBoxStyle = large ? {} : { height: boxHeight, overflow: "hidden" };
-  const photoBoxStyle = large ? {} : hasScorecard ? { height: boxHeight } : { aspectRatio: "4 / 3" };
 
-  function Item({ children, style: styleOverride }) {
-    const finalStyle = large ? boxStyle : { ...boxStyle, ...styleOverride };
+  function Item({ children }) {
     if (!large) {
       return (
-        <div style={finalStyle} onClick={onOpen}>
+        <div style={boxStyle} onClick={onOpen}>
           {children}
         </div>
       );
     }
     return (
-      <div style={finalStyle} onClick={cycleZoom}>
+      <div style={boxStyle} onClick={cycleZoom}>
         <div style={{ width: "100%", height: "100%", transform: `scale(${zoom})`, transformOrigin: "center center", transition: "transform 0.2s ease" }}>
           {children}
         </div>
@@ -1231,17 +1207,15 @@ function PostMedia({ post: p, large, onOpen }) {
     if (hasScorecard) {
       return (
         <div style={{ ...styles.postScorecardWrap, ...wrapStyle }}>
-          <Item style={scorecardBoxStyle}>
-            <div ref={scorecardRef}>
-              <Scorecard round={p.round} />
-            </div>
+          <Item>
+            <Scorecard round={p.round} />
           </Item>
         </div>
       );
     }
     return (
       <div style={{ ...styles.postImageWrap, ...wrapStyle }}>
-        <Item style={photoBoxStyle}>
+        <Item>
           <PhotoTile src={images[0]} style={{ width: "100%", height: "100%", objectFit: large ? "contain" : "cover", borderRadius: large ? 0 : 18, border: large ? "none" : "1.5px solid #74C69D" }} alt={photoAlt} />
         </Item>
       </div>
@@ -1261,15 +1235,13 @@ function PostMedia({ post: p, large, onOpen }) {
         {hasScorecard && (
           <div style={{ ...styles.postMediaScrollItem, ...(large ? { height: "100%" } : {}) }}>
             <Item>
-              <div ref={scorecardRef}>
-                <Scorecard round={p.round} />
-              </div>
+              <Scorecard round={p.round} />
             </Item>
           </div>
         )}
         {images.map((src, i) => (
           <div key={i} style={{ ...styles.postMediaScrollItem, ...(large ? { height: "100%" } : {}) }}>
-            <Item style={photoBoxStyle}>
+            <Item>
               <PhotoTile src={src} style={{ width: "100%", height: "100%", objectFit: large ? "contain" : "cover", borderRadius: large ? 0 : 18, border: large ? "none" : "1.5px solid #74C69D" }} alt={`${photoAlt} (${i + 1}/${images.length})`} />
             </Item>
           </div>
