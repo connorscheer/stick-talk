@@ -2025,6 +2025,13 @@ const MEDIA_LARGE_HEIGHT = "64vh";
 // measurement — it should never shift based on content.
 const MEDIA_BOX_HEIGHT = 440;
 
+// PhotoCropBox's baseline zoom is bumped this far past the pure "just barely
+// covers the box" scale, so there's always some room to drag left/right (or
+// up/down) even when a photo's aspect ratio is already close to the box's —
+// e.g. a typical portrait phone photo is close enough to this box's ~0.76
+// ratio that pure cover-fit left almost no slack to reposition with.
+const CROP_BASE_SLACK = 1.15;
+
 function PostMedia({ post: p, large, onOpen }) {
   const [active, setActive] = useState(0);
   const [zoom, setZoom] = useState(1);
@@ -2441,7 +2448,7 @@ function PostViewerModal({ post: p, onClose, onLike, onOpenComments, onOpenLiker
 // they all crop the same way instead of drifting apart over time.
 async function bakePhotoCrop(rawImage, naturalSize, boxWidth, zoom, pan, boxHeight = MEDIA_BOX_HEIGHT, outW = 900) {
   if (!rawImage || !naturalSize || !boxWidth) return rawImage;
-  const baseScale = Math.max(boxWidth / naturalSize.w, boxHeight / naturalSize.h);
+  const baseScale = Math.max(boxWidth / naturalSize.w, boxHeight / naturalSize.h) * CROP_BASE_SLACK;
   const dispW = naturalSize.w * baseScale * zoom;
   const dispH = naturalSize.h * baseScale * zoom;
   return new Promise((resolve) => {
@@ -2461,6 +2468,27 @@ async function bakePhotoCrop(rawImage, naturalSize, boxWidth, zoom, pan, boxHeig
   });
 }
 
+// Visual "this is a crop tool" cue — corner brackets + a rule-of-thirds grid
+// laid over the photo, same visual language as a real camera-app crop step.
+// Pure decoration (pointer-events none) so it never intercepts the drag/pinch
+// happening on the image underneath.
+function CropFrameOverlay() {
+  return (
+    <div style={styles.cropOverlay}>
+      <svg width="100%" height="100%" style={{ position: "absolute", inset: 0 }}>
+        <line x1="33.33%" y1="0" x2="33.33%" y2="100%" stroke="rgba(255,255,255,0.45)" strokeWidth="1" />
+        <line x1="66.66%" y1="0" x2="66.66%" y2="100%" stroke="rgba(255,255,255,0.45)" strokeWidth="1" />
+        <line x1="0" y1="33.33%" x2="100%" y2="33.33%" stroke="rgba(255,255,255,0.45)" strokeWidth="1" />
+        <line x1="0" y1="66.66%" x2="100%" y2="66.66%" stroke="rgba(255,255,255,0.45)" strokeWidth="1" />
+      </svg>
+      <span style={{ ...styles.cropCorner, top: 8, left: 8, borderTop: "2.5px solid #FFFFFF", borderLeft: "2.5px solid #FFFFFF" }} />
+      <span style={{ ...styles.cropCorner, top: 8, right: 8, borderTop: "2.5px solid #FFFFFF", borderRight: "2.5px solid #FFFFFF" }} />
+      <span style={{ ...styles.cropCorner, bottom: 8, left: 8, borderBottom: "2.5px solid #FFFFFF", borderLeft: "2.5px solid #FFFFFF" }} />
+      <span style={{ ...styles.cropCorner, bottom: 8, right: 8, borderBottom: "2.5px solid #FFFFFF", borderRight: "2.5px solid #FFFFFF" }} />
+    </div>
+  );
+}
+
 // Lets the poster drag/pinch a photo within a box that's the exact same
 // width x MEDIA_BOX_HEIGHT shape the feed renders it at, so what they see
 // while composing is what everyone else sees — instead of finding out after
@@ -2468,7 +2496,7 @@ async function bakePhotoCrop(rawImage, naturalSize, boxWidth, zoom, pan, boxHeig
 function PhotoCropBox({ src, naturalSize, boxWidth, zoom, pan, onPanChange, onZoomChange, boxRef }) {
   const gestureRef = useRef(null); // { startX, startY, startPanX, startPanY } drag, or { pinchStartDist, pinchStartZoom } pinch
 
-  const baseScale = naturalSize && boxWidth ? Math.max(boxWidth / naturalSize.w, MEDIA_BOX_HEIGHT / naturalSize.h) : 1;
+  const baseScale = naturalSize && boxWidth ? Math.max(boxWidth / naturalSize.w, MEDIA_BOX_HEIGHT / naturalSize.h) * CROP_BASE_SLACK : 1;
   const dispW = naturalSize ? naturalSize.w * baseScale * zoom : 0;
   const dispH = naturalSize ? naturalSize.h * baseScale * zoom : 0;
   const maxOffsetX = Math.max(0, (dispW - boxWidth) / 2);
@@ -2521,22 +2549,25 @@ function PhotoCropBox({ src, naturalSize, boxWidth, zoom, pan, onPanChange, onZo
       onTouchEnd={handleTouchEnd}
     >
       {naturalSize && boxWidth > 0 && (
-        <img
-          src={src}
-          alt="Photo preview — drag to reposition, pinch to zoom"
-          draggable={false}
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            width: dispW,
-            height: dispH,
-            maxWidth: "none",
-            transform: `translate(calc(-50% + ${pan.x}px), calc(-50% + ${pan.y}px))`,
-            userSelect: "none",
-            cursor: "grab",
-          }}
-        />
+        <>
+          <img
+            src={src}
+            alt="Photo preview — drag to reposition, pinch to zoom"
+            draggable={false}
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              width: dispW,
+              height: dispH,
+              maxWidth: "none",
+              transform: `translate(calc(-50% + ${pan.x}px), calc(-50% + ${pan.y}px))`,
+              userSelect: "none",
+              cursor: "grab",
+            }}
+          />
+          <CropFrameOverlay />
+        </>
       )}
     </div>
   );
@@ -4974,6 +5005,8 @@ const styles = {
   composerImageRemove: { position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: 8, background: "rgba(11,31,25,0.7)", border: "none", display: "flex", alignItems: "center", justifyContent: "center" },
   composerCropBox: { width: "100%", height: MEDIA_BOX_HEIGHT, borderRadius: 12, overflow: "hidden", position: "relative", border: "1.5px solid #74C69D", touchAction: "none", background: "#000000" },
   composerCropHint: { fontSize: 11, color: "#9C9990", marginTop: 8, textAlign: "center", lineHeight: 1.4 },
+  cropOverlay: { position: "absolute", inset: 0, pointerEvents: "none" },
+  cropCorner: { position: "absolute", width: 18, height: 18 },
   addPhotoBtn: { width: "100%", background: "#171513", border: "1px dashed #4A4844", borderRadius: 10, padding: "11px 10px", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, color: "#74C69D", fontSize: 13, fontWeight: 600, marginBottom: 14 },
   shareRow: { display: "flex", justifyContent: "space-between", alignItems: "center", background: "#171513", border: "1.5px solid #74C69D", borderRadius: 10, padding: "11px 13px", marginBottom: 14 },
   shareRowTitle: { fontSize: 13.5, fontWeight: 600, color: "#FFFFFF" },
