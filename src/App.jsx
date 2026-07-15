@@ -576,6 +576,10 @@ function AuthGate() {
   const [mode, setMode] = useState("signin"); // signin | signup
   const [showForm, setShowForm] = useState(false);
   const [slide, setSlide] = useState(0);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [photo, setPhoto] = useState(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -585,12 +589,26 @@ function AuthGate() {
   const cardContentRef = useRef(null);
   const headlineRef = useRef(null);
   const prevSlideRef = useRef(0);
+  const photoInputRef = useRef(null);
 
   function openForm(nextMode) {
     setMode(nextMode);
     setError("");
     setInfo("");
     setShowForm(true);
+  }
+
+  async function handlePhotoPick(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setPhotoUploading(true);
+    try {
+      setPhoto(await fileToSquareImage(file));
+    } catch (err) {
+      // upload failed — leave whatever photo state was there
+    }
+    setPhotoUploading(false);
   }
 
   function handleTouchStart(e) {
@@ -623,8 +641,14 @@ function AuthGate() {
     setError("");
     setInfo("");
     const trimmedEmail = email.trim();
+    const trimmedFirst = firstName.trim();
+    const trimmedLast = lastName.trim();
     if (!trimmedEmail || !password) {
       setError("Enter an email and password.");
+      return;
+    }
+    if (mode === "signup" && (!trimmedFirst || !trimmedLast)) {
+      setError("Enter your first and last name.");
       return;
     }
     setBusy(true);
@@ -635,7 +659,20 @@ function AuthGate() {
       } else {
         const { data, error: signUpError } = await supabase.auth.signUp({ email: trimmedEmail, password });
         if (signUpError) throw signUpError;
-        if (!data.session) {
+        const fullName = `${trimmedFirst} ${trimmedLast}`.trim();
+        if (data.session) {
+          // Signed in immediately (email confirmation is off) — save the
+          // account identity now instead of routing through NameGate.
+          await saveShared(`sticktalk:account:${data.session.user.id}`, {
+            name: fullName,
+            homeCourse: "Pinehurst Municipal",
+            photo: photo || null,
+          });
+        } else {
+          // Needs to confirm email first — stash on this device so the name
+          // and photo get applied automatically the first time they actually
+          // sign in, instead of falling back to the separate NameGate step.
+          savePersonal("sticktalk:pending-signup", { name: fullName, photo: photo || null });
           setInfo("Check your email to confirm your account, then sign in.");
         }
       }
@@ -712,13 +749,44 @@ function AuthGate() {
       </button>
       <img src="/stick-talk-wordmark-signin.png" alt="Stick Talk" style={styles.nameGateWordmarkImg} />
       <p style={styles.nameGateCopy}>{mode === "signin" ? "Sign in to your account" : "Create an account"}</p>
+      {mode === "signup" && (
+        <>
+          <input ref={photoInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhotoPick} />
+          <button
+            type="button"
+            style={{ ...styles.avatarEditBtn, marginBottom: 16 }}
+            onClick={() => photoInputRef.current?.click()}
+            aria-label="Add a profile photo"
+          >
+            <div style={styles.avatarRingSm}>
+              <Avatar photo={photo} name={firstName || "?"} style={styles.avatarLg} />
+            </div>
+            <div style={styles.avatarEditBadge}>{photoUploading ? <span style={styles.avatarEditSpinner} /> : <Camera size={13} color="#000000" />}</div>
+          </button>
+          <div style={styles.nameGateNameRow}>
+            <input
+              style={{ ...styles.nameGateInput, flex: 1, marginBottom: 0 }}
+              placeholder="First name"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              autoFocus
+            />
+            <input
+              style={{ ...styles.nameGateInput, flex: 1, marginBottom: 0 }}
+              placeholder="Last name"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+            />
+          </div>
+        </>
+      )}
       <input
-        style={styles.nameGateInput}
+        style={{ ...styles.nameGateInput, marginTop: mode === "signup" ? 10 : 0 }}
         placeholder="Email"
         type="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        autoFocus
+        autoFocus={mode === "signin"}
       />
       <input
         style={{ ...styles.nameGateInput, marginTop: 10 }}
@@ -858,14 +926,26 @@ export default function App() {
         if (account.photo) setMyPhoto(account.photo);
         if (account.rounds) setRounds(account.rounds);
       } else {
-        const savedName = loadPersonal(STORAGE_KEYS.name, null);
-        if (savedName) setMyName(savedName);
-        const savedCourse = loadPersonal("sticktalk:my-home-course", null);
-        setHomeCourse(savedCourse || "Pinehurst Municipal");
-        const savedPhoto = loadPersonal("sticktalk:my-photo", null);
-        if (savedPhoto) setMyPhoto(savedPhoto);
-        const savedRounds = loadPersonal("sticktalk:my-rounds", null);
-        if (savedRounds) setRounds(savedRounds);
+        // Signup required email confirmation, so AuthGate couldn't save the
+        // account record right away — it stashed the name/photo collected at
+        // signup here instead. Apply it now, on this first real sign-in.
+        const pending = loadPersonal("sticktalk:pending-signup", null);
+        if (pending && pending.name) {
+          setMyName(pending.name);
+          setHomeCourse("Pinehurst Municipal");
+          if (pending.photo) setMyPhoto(pending.photo);
+          saveShared(`sticktalk:account:${session.user.id}`, { name: pending.name, homeCourse: "Pinehurst Municipal", photo: pending.photo || null });
+          clearPersonal("sticktalk:pending-signup");
+        } else {
+          const savedName = loadPersonal(STORAGE_KEYS.name, null);
+          if (savedName) setMyName(savedName);
+          const savedCourse = loadPersonal("sticktalk:my-home-course", null);
+          setHomeCourse(savedCourse || "Pinehurst Municipal");
+          const savedPhoto = loadPersonal("sticktalk:my-photo", null);
+          if (savedPhoto) setMyPhoto(savedPhoto);
+          const savedRounds = loadPersonal("sticktalk:my-rounds", null);
+          if (savedRounds) setRounds(savedRounds);
+        }
       }
       const savedTees = loadPersonal("sticktalk:my-tees", null);
       if (savedTees != null) setMyTees(savedTees);
@@ -4330,6 +4410,7 @@ const styles = {
   nameGateWordmarkImg: { height: 64, width: "auto", display: "block", marginBottom: 6 },
   nameGateCopy: { fontSize: 14, color: "rgba(255,255,255,0.72)", marginBottom: 18 },
   nameGateInput: { width: "100%", background: "#F4F5F1", border: "1px solid #D8DCD3", borderRadius: 10, padding: "12px 14px", fontSize: 15, color: "#000000", marginBottom: 14, textAlign: "center" },
+  nameGateNameRow: { display: "flex", gap: 10, width: "100%", marginBottom: 14 },
   nameGateFoot: { fontSize: 11.5, color: "rgba(255,255,255,0.6)", marginTop: 18, lineHeight: 1.5 },
 
   // ---- Onboarding carousel (pre-login screen) ----
