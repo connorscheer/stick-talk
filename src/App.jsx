@@ -453,7 +453,6 @@ function AuthGate() {
           }
         }
       `}</style>
-      <img src="/stick-talk-icon.png" alt="Stick Talk" style={styles.nameGateIcon} />
       <img src="/stick-talk-wordmark-signin.png" alt="Stick Talk" style={styles.nameGateWordmarkImg} />
       <p style={styles.nameGateCopy}>{mode === "signin" ? "Sign in to your account" : "Create an account"}</p>
       <input
@@ -515,7 +514,6 @@ function NameGate({ onSubmit }) {
           }
         }
       `}</style>
-      <img src="/stick-talk-icon.png" alt="Stick Talk" style={styles.nameGateIcon} />
       <img src="/stick-talk-wordmark-signin.png" alt="Stick Talk" style={styles.nameGateWordmarkImg} />
       <p style={styles.nameGateCopy}>What should the group see your posts as?</p>
       <input
