@@ -440,6 +440,10 @@ function OnboardFeedMock() {
         </div>
       </div>
       <p style={styles.mockCaption}>Carded a 78 at Colorow — new personal best 🔥</p>
+      <div style={styles.mockMediaBox}>
+        <Flag size={30} color="#F5EFDD" style={{ opacity: 0.85 }} />
+      </div>
+      <div style={styles.mockLikedByRow}>Jordan Pace and 11 others gave a golf clap</div>
       <div style={styles.mockActionsRow}>
         <span style={styles.mockActionItem}>
           <span style={{ fontSize: 15 }}>👏</span> 12
@@ -460,10 +464,18 @@ function OnboardScorecardMock() {
     { num: 1, par: 4, score: 4 },
     { num: 2, par: 3, score: 2 },
     { num: 3, par: 5, score: 7 },
+    { num: 4, par: 4, score: 5 },
+    { num: 5, par: 3, score: 3 },
+    { num: 6, par: 5, score: 5 },
   ];
   return (
     <div style={styles.mockScoreWrap}>
       <div style={styles.mockScoreTitle}>Colorow Mountain Park</div>
+      <div style={styles.mockStatsRow}>
+        <span>18 holes</span>
+        <span>Par 72</span>
+        <span>Shot 76</span>
+      </div>
       <div style={styles.mockHoleRow}>
         {holes.map((h) => (
           <div key={h.num} style={styles.mockHoleCell}>
@@ -478,6 +490,18 @@ function OnboardScorecardMock() {
         <span>Rating 71.4</span>
         <span>Slope 128</span>
       </div>
+      <div style={styles.mockHandicapRow}>
+        <TrendingDown size={13} color="#74C69D" />
+        <span>Handicap trending down — 9.4 this month</span>
+      </div>
+      <div style={styles.mockRecentLabel}>Last 4 rounds</div>
+      <div style={styles.mockRecentRow}>
+        {["+4", "+2", "E", "+6"].map((v, i) => (
+          <div key={i} style={styles.mockRecentChip}>
+            {v}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -485,11 +509,29 @@ function OnboardScorecardMock() {
 function OnboardGroupsMock() {
   return (
     <div style={styles.mockGroupWrap}>
-      <div style={styles.mockGroupHeader}>Sunday Skins 🏌️</div>
+      <div style={styles.mockGroupHeaderRow}>
+        <div style={styles.mockGroupAvatarStack}>
+          <Avatar name="Emilio Soria" style={{ ...styles.mockGroupAvatarSm, zIndex: 3 }} />
+          <Avatar name="Priya Nair" style={{ ...styles.mockGroupAvatarSm, zIndex: 2, marginLeft: -10 }} />
+          <Avatar name="Dev Patel" style={{ ...styles.mockGroupAvatarSm, zIndex: 1, marginLeft: -10 }} />
+        </div>
+        <div>
+          <div style={styles.mockGroupHeader}>Sunday Skins 🏌️</div>
+          <div style={styles.mockGroupSub}>6 members</div>
+        </div>
+      </div>
       <div style={styles.mockChatCol}>
         <span style={styles.mockBubbleTheirs}>Tee time moved to 8:40, everyone good?</span>
         <span style={styles.mockBubbleMine}>Works for me 👍</span>
         <span style={styles.mockBubbleTheirs}>See you all there</span>
+        <span style={styles.mockBubbleTheirs}>I'll bring the extra balls, lost half of mine last week</span>
+        <span style={styles.mockBubbleMine}>😂 same</span>
+      </div>
+      <div style={styles.mockInputBar}>
+        <span style={styles.mockInputPill}>Message…</span>
+        <span style={styles.mockSendDot}>
+          <Send size={13} color="#000000" />
+        </span>
       </div>
     </div>
   );
@@ -500,12 +542,15 @@ function OnboardNotifsMock() {
     { name: "Emilio Soria", text: "gave your round a golf clap 👏", time: "2m" },
     { name: "Priya Nair", text: "started following you", time: "18m" },
     { name: "Dev Patel", text: "requested to join Sunday Skins", time: "1h" },
+    { name: "Adriana Marcos", text: "commented: \"Let's go!!!\"", time: "3h" },
+    { name: "Jordan Pace", text: "gave your round a golf clap 👏", time: "5h" },
   ];
   return (
     <div style={styles.mockNotifWrap}>
       <div style={styles.mockNotifTitle}>Notifications</div>
-      {rows.map((r) => (
-        <div key={r.name} style={styles.mockNotifRow}>
+      <div style={{ ...styles.mockGroupSub, marginBottom: 8 }}>This week</div>
+      {rows.map((r, i) => (
+        <div key={r.name + i} style={styles.mockNotifRow}>
           <Avatar name={r.name} style={{ ...styles.mockAvatar, width: 30, height: 30, fontSize: 11 }} />
           <div>
             <div style={styles.mockNotifText}>
@@ -4267,8 +4312,8 @@ const styles = {
   // ---- Onboarding carousel (pre-login screen) ----
   onboardWrap: { minHeight: "100vh", maxWidth: 420, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", backgroundColor: "#000000", textAlign: "center", fontFamily: "'Baloo 2', sans-serif", padding: "36px 22px 28px", position: "relative", overflow: "hidden" },
   onboardGlow: { position: "absolute", top: -160, left: "50%", transform: "translateX(-50%)", width: 420, height: 420, borderRadius: "50%", background: "radial-gradient(circle, rgba(116,198,157,0.25) 0%, rgba(116,198,157,0) 70%)", pointerEvents: "none" },
-  onboardWordmarkImg: { height: 30, width: "auto", display: "block", marginBottom: 26, position: "relative" },
-  onboardCardFrame: { width: "100%", maxWidth: 300, background: "#FFFFFF", borderRadius: 26, boxShadow: "0 20px 46px rgba(0,0,0,0.4)", overflow: "hidden", position: "relative", touchAction: "pan-y" },
+  onboardWordmarkImg: { height: 44, width: "auto", display: "block", marginBottom: 26, position: "relative" },
+  onboardCardFrame: { width: "100%", maxWidth: 320, background: "#FFFFFF", borderRadius: 26, boxShadow: "0 20px 46px rgba(0,0,0,0.4)", overflow: "hidden", position: "relative", touchAction: "pan-y" },
   onboardHeadline: { fontSize: 21, fontWeight: 700, color: "#FFFFFF", margin: "24px 0 16px", lineHeight: 1.28, position: "relative" },
   onboardDots: { display: "flex", gap: 6, position: "relative" },
   onboardDot: { width: 6, height: 6, borderRadius: 3, background: "rgba(255,255,255,0.28)", transition: "all 220ms cubic-bezier(0.23, 1, 0.32, 1)", border: "none", padding: 0 },
@@ -4286,20 +4331,34 @@ const styles = {
   mockCaption: { fontSize: 13.5, color: "#232220", marginBottom: 13, lineHeight: 1.4 },
   mockActionsRow: { display: "flex", gap: 18, borderTop: "1px solid #ECE9E0", paddingTop: 11 },
   mockActionItem: { display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: "#6B6960" },
+  mockMediaBox: { width: "100%", height: 150, borderRadius: 12, marginBottom: 10, background: "linear-gradient(135deg, #74C69D, #232220)", display: "flex", alignItems: "center", justifyContent: "center" },
+  mockLikedByRow: { fontSize: 11.5, color: "#6B6960", marginBottom: 9 },
   mockScoreWrap: { background: "#F5EFDD", padding: "20px 15px", textAlign: "left" },
-  mockScoreTitle: { fontWeight: 700, fontSize: 13.5, color: "#232220", marginBottom: 12 },
-  mockHoleRow: { display: "flex", gap: 7, marginBottom: 14 },
-  mockHoleCell: { flex: 1, background: "#EDE4CC", borderRadius: 8, padding: "7px 4px 9px", textAlign: "center" },
-  mockHoleNum: { fontSize: 9.5, color: "#8A8878", display: "block", marginBottom: 4 },
-  mockHolePar: { fontSize: 10.5, color: "#5C5A52", fontWeight: 600, display: "block", marginBottom: 4 },
-  mockFooterRow: { display: "flex", justifyContent: "space-between", fontSize: 10.5, color: "#7A7868", borderTop: "1px solid #E3DAC0", paddingTop: 9 },
+  mockScoreTitle: { fontWeight: 700, fontSize: 13.5, color: "#232220", marginBottom: 10 },
+  mockStatsRow: { display: "flex", justifyContent: "space-between", fontSize: 11, color: "#5C5A52", fontWeight: 600, marginBottom: 14 },
+  mockHoleRow: { display: "flex", gap: 6, marginBottom: 14 },
+  mockHoleCell: { flex: 1, background: "#EDE4CC", borderRadius: 8, padding: "7px 3px 9px", textAlign: "center" },
+  mockHoleNum: { fontSize: 9, color: "#8A8878", display: "block", marginBottom: 4 },
+  mockHolePar: { fontSize: 10, color: "#5C5A52", fontWeight: 600, display: "block", marginBottom: 4 },
+  mockFooterRow: { display: "flex", justifyContent: "space-between", fontSize: 10.5, color: "#7A7868", borderTop: "1px solid #E3DAC0", paddingTop: 9, marginBottom: 12 },
+  mockHandicapRow: { display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#232220", fontWeight: 600, background: "#EDE4CC", borderRadius: 8, padding: "8px 10px" },
+  mockRecentLabel: { fontSize: 10.5, color: "#8A8878", fontWeight: 600, marginTop: 14, marginBottom: 6 },
+  mockRecentRow: { display: "flex", gap: 6 },
+  mockRecentChip: { flex: 1, background: "#EDE4CC", borderRadius: 6, padding: "7px 2px", textAlign: "center", fontSize: 10.5, color: "#5C5A52", fontWeight: 700 },
   mockGroupWrap: { padding: "16px 15px 18px", textAlign: "left" },
-  mockGroupHeader: { fontWeight: 700, fontSize: 13.5, color: "#000000", marginBottom: 11, paddingBottom: 9, borderBottom: "1px solid #ECE9E0" },
-  mockChatCol: { display: "flex", flexDirection: "column", gap: 8 },
+  mockGroupHeaderRow: { display: "flex", alignItems: "center", gap: 10, marginBottom: 12, paddingBottom: 11, borderBottom: "1px solid #ECE9E0" },
+  mockGroupAvatarStack: { display: "flex", alignItems: "center" },
+  mockGroupAvatarSm: { width: 26, height: 26, borderRadius: "50%", fontSize: 10, border: "2px solid #FFFFFF", flexShrink: 0 },
+  mockGroupHeader: { fontWeight: 700, fontSize: 13.5, color: "#000000" },
+  mockGroupSub: { fontSize: 11, color: "#8A8880", marginTop: 1 },
+  mockChatCol: { display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 },
   mockBubbleTheirs: { background: "#F1EFE7", color: "#232220", borderRadius: "14px 14px 14px 4px", padding: "8px 11px", fontSize: 12.5, alignSelf: "flex-start", maxWidth: "80%" },
   mockBubbleMine: { background: "#74C69D", color: "#000000", borderRadius: "14px 14px 4px 14px", padding: "8px 11px", fontSize: 12.5, alignSelf: "flex-end", maxWidth: "80%", fontWeight: 600 },
+  mockInputBar: { display: "flex", alignItems: "center", gap: 8, background: "#F4F5F1", borderRadius: 20, padding: "8px 8px 8px 14px" },
+  mockInputPill: { flex: 1, fontSize: 12, color: "#9C9A90" },
+  mockSendDot: { width: 26, height: 26, borderRadius: "50%", background: "#74C69D", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
   mockNotifWrap: { padding: "16px 15px 18px", textAlign: "left" },
-  mockNotifTitle: { fontWeight: 700, fontSize: 13.5, color: "#000000", marginBottom: 11 },
+  mockNotifTitle: { fontWeight: 700, fontSize: 13.5, color: "#000000", marginBottom: 2 },
   mockNotifRow: { display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid #F1EFE7" },
   mockNotifText: { fontSize: 12, color: "#232220", lineHeight: 1.35 },
   mockNotifTime: { fontSize: 10.5, color: "#9C9A90", marginTop: 2 },
