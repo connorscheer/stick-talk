@@ -453,10 +453,8 @@ function AuthGate() {
           }
         }
       `}</style>
-      <div style={styles.nameGateFlag}>
-        <BrandMark size={26} />
-      </div>
-      <div style={styles.nameGateWordmark}>STICK TALK</div>
+      <img src="/stick-talk-icon.png" alt="Stick Talk" style={styles.nameGateIcon} />
+      <img src="/stick-talk-wordmark-signin.png" alt="Stick Talk" style={styles.nameGateWordmarkImg} />
       <p style={styles.nameGateCopy}>{mode === "signin" ? "Sign in to your account" : "Create an account"}</p>
       <input
         style={styles.nameGateInput}
@@ -517,10 +515,8 @@ function NameGate({ onSubmit }) {
           }
         }
       `}</style>
-      <div style={styles.nameGateFlag}>
-        <BrandMark size={26} />
-      </div>
-      <div style={styles.nameGateWordmark}>STICK TALK</div>
+      <img src="/stick-talk-icon.png" alt="Stick Talk" style={styles.nameGateIcon} />
+      <img src="/stick-talk-wordmark-signin.png" alt="Stick Talk" style={styles.nameGateWordmarkImg} />
       <p style={styles.nameGateCopy}>What should the group see your posts as?</p>
       <input
         style={styles.nameGateInput}
@@ -4074,7 +4070,9 @@ const styles = {
   loadingSpinner: { width: 34, height: 34, borderRadius: "50%", border: "3px solid #E4E1D8", borderTopColor: "#74C69D", animation: "spin 0.8s linear infinite" },
   nameGateWrap: { minHeight: "100vh", maxWidth: 420, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 28px", backgroundColor: "#000000", textAlign: "center", fontFamily: "'Baloo 2', sans-serif" },
   nameGateFlag: { width: 52, height: 52, borderRadius: 16, background: "#000000", border: "1.5px solid #74C69D", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14 },
+  nameGateIcon: { width: 88, height: 88, display: "block", marginBottom: 14 },
   nameGateWordmark: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 24, letterSpacing: 0, color: "#FFFFFF", marginBottom: 6 },
+  nameGateWordmarkImg: { height: 34, width: "auto", display: "block", marginBottom: 6 },
   nameGateCopy: { fontSize: 14, color: "rgba(255,255,255,0.72)", marginBottom: 18 },
   nameGateInput: { width: "100%", background: "#F4F5F1", border: "1px solid #D8DCD3", borderRadius: 10, padding: "12px 14px", fontSize: 15, color: "#000000", marginBottom: 14, textAlign: "center" },
   nameGateFoot: { fontSize: 11.5, color: "rgba(255,255,255,0.6)", marginTop: 18, lineHeight: 1.5 },
