@@ -225,6 +225,17 @@ function fileToSharedImage(file, maxDim = 900, quality = 0.72) {
   });
 }
 
+// Reads back the pixel dimensions of an already-loaded data URL, so a crop UI
+// knows how much to scale/pan a photo to cover its target box.
+function naturalSizeOf(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+}
+
 // Profile photos only ever render inside a circular avatar (always a square
 // crop), so — like Instagram, Twitter, etc. — crop to a centered square
 // before upload instead of keeping the full rectangle. Avoids wasting bytes
@@ -2424,11 +2435,103 @@ function PostViewerModal({ post: p, onClose, onLike, onOpenComments, onOpenLiker
   );
 }
 
+// Lets the poster drag/pinch a photo within a box that's the exact same
+// width x MEDIA_BOX_HEIGHT shape the feed renders it at, so what they see
+// while composing is what everyone else sees — instead of finding out after
+// posting that PostMedia's cover-crop cut off the part they cared about.
+function PhotoCropBox({ src, naturalSize, boxWidth, zoom, pan, onPanChange, onZoomChange, boxRef }) {
+  const gestureRef = useRef(null); // { startX, startY, startPanX, startPanY } drag, or { pinchStartDist, pinchStartZoom } pinch
+
+  const baseScale = naturalSize && boxWidth ? Math.max(boxWidth / naturalSize.w, MEDIA_BOX_HEIGHT / naturalSize.h) : 1;
+  const dispW = naturalSize ? naturalSize.w * baseScale * zoom : 0;
+  const dispH = naturalSize ? naturalSize.h * baseScale * zoom : 0;
+  const maxOffsetX = Math.max(0, (dispW - boxWidth) / 2);
+  const maxOffsetY = Math.max(0, (dispH - MEDIA_BOX_HEIGHT) / 2);
+
+  function clamp(next) {
+    return { x: Math.max(-maxOffsetX, Math.min(maxOffsetX, next.x)), y: Math.max(-maxOffsetY, Math.min(maxOffsetY, next.y)) };
+  }
+  function pinchDistance(touches) {
+    const [a, b] = touches;
+    return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+  }
+
+  function handlePointerDown(e) {
+    if (!naturalSize) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    gestureRef.current = { startX: e.clientX, startY: e.clientY, startPanX: pan.x, startPanY: pan.y };
+  }
+  function handlePointerMove(e) {
+    if (!gestureRef.current || gestureRef.current.pinchStartDist) return;
+    onPanChange(clamp({ x: gestureRef.current.startPanX + (e.clientX - gestureRef.current.startX), y: gestureRef.current.startPanY + (e.clientY - gestureRef.current.startY) }));
+  }
+  function handlePointerUp() {
+    gestureRef.current = null;
+  }
+  function handleTouchStart(e) {
+    if (e.touches.length === 2) gestureRef.current = { pinchStartDist: pinchDistance(e.touches), pinchStartZoom: zoom };
+  }
+  function handleTouchMove(e) {
+    if (e.touches.length === 2 && gestureRef.current?.pinchStartDist) {
+      e.preventDefault();
+      const scale = gestureRef.current.pinchStartZoom * (pinchDistance(e.touches) / gestureRef.current.pinchStartDist);
+      onZoomChange(Math.max(1, Math.min(3, scale)));
+    }
+  }
+  function handleTouchEnd(e) {
+    if (e.touches.length < 2) gestureRef.current = null;
+  }
+
+  return (
+    <div
+      ref={boxRef}
+      style={styles.composerCropBox}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {naturalSize && boxWidth > 0 && (
+        <img
+          src={src}
+          alt="Photo preview — drag to reposition, pinch to zoom"
+          draggable={false}
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            width: dispW,
+            height: dispH,
+            maxWidth: "none",
+            transform: `translate(calc(-50% + ${pan.x}px), calc(-50% + ${pan.y}px))`,
+            userSelect: "none",
+            cursor: "grab",
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
 function ComposerModal({ onClose, onSubmit }) {
   const [text, setText] = useState("");
-  const [image, setImage] = useState(null);
+  const [rawImage, setRawImage] = useState(null); // resized upload, pre-crop
+  const [naturalSize, setNaturalSize] = useState(null); // { w, h } of rawImage
+  const [boxWidth, setBoxWidth] = useState(0);
+  const [zoom, setZoom] = useState(1); // multiplier over the cover baseline
+  const [pan, setPan] = useState({ x: 0, y: 0 });
   const [uploading, setUploading] = useState(false);
+  const [posting, setPosting] = useState(false);
   const fileRef = useRef(null);
+  const boxRef = useRef(null);
+
+  useEffect(() => {
+    if (!rawImage || !boxRef.current) return;
+    setBoxWidth(boxRef.current.clientWidth);
+  }, [rawImage]);
 
   async function handleFile(e) {
     const file = e.target.files?.[0];
@@ -2436,14 +2539,57 @@ function ComposerModal({ onClose, onSubmit }) {
     if (!file) return;
     setUploading(true);
     try {
-      setImage(await fileToSharedImage(file));
+      const resized = await fileToSharedImage(file);
+      const size = await naturalSizeOf(resized);
+      setRawImage(resized);
+      setNaturalSize(size);
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
     } catch (err) {
       // ignore — upload failed, user can retry
     }
     setUploading(false);
   }
 
-  const canPost = text.trim().length > 0 || image;
+  function removePhoto() {
+    setRawImage(null);
+    setNaturalSize(null);
+    setBoxWidth(0);
+  }
+
+  // Bakes the current pan/zoom into a new image cropped to exactly what the
+  // box showed, so PostMedia's own cover-crop has nothing left to trim.
+  async function bakeCrop() {
+    if (!rawImage || !naturalSize || !boxWidth) return rawImage;
+    const baseScale = Math.max(boxWidth / naturalSize.w, MEDIA_BOX_HEIGHT / naturalSize.h);
+    const dispW = naturalSize.w * baseScale * zoom;
+    const dispH = naturalSize.h * baseScale * zoom;
+    return new Promise((resolve) => {
+      const img = new window.Image();
+      img.onload = () => {
+        const outW = 900;
+        const outH = Math.round(outW * (MEDIA_BOX_HEIGHT / boxWidth));
+        const outScale = outW / boxWidth;
+        const dx = (boxWidth - dispW) / 2 + pan.x;
+        const dy = (MEDIA_BOX_HEIGHT - dispH) / 2 + pan.y;
+        const canvas = document.createElement("canvas");
+        canvas.width = outW;
+        canvas.height = outH;
+        canvas.getContext("2d").drawImage(img, dx * outScale, dy * outScale, dispW * outScale, dispH * outScale);
+        resolve(canvas.toDataURL("image/jpeg", 0.82));
+      };
+      img.src = rawImage;
+    });
+  }
+
+  async function handlePost() {
+    setPosting(true);
+    const finalImage = rawImage ? await bakeCrop() : null;
+    onSubmit("note", text, finalImage ? [finalImage] : []);
+    setPosting(false);
+  }
+
+  const canPost = text.trim().length > 0 || rawImage;
 
   return (
     <div style={styles.modalOverlay} onClick={onClose}>
@@ -2465,10 +2611,20 @@ function ComposerModal({ onClose, onSubmit }) {
 
         <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
 
-        {image ? (
+        {rawImage ? (
           <div style={styles.composerImageWrap}>
-            <PhotoTile src={image} style={{ width: "100%", aspectRatio: "4 / 3", borderRadius: 12 }} alt="Photo preview" />
-            <button style={styles.composerImageRemove} onClick={() => setImage(null)} aria-label="Remove photo">
+            <PhotoCropBox
+              src={rawImage}
+              naturalSize={naturalSize}
+              boxWidth={boxWidth}
+              zoom={zoom}
+              pan={pan}
+              onPanChange={setPan}
+              onZoomChange={setZoom}
+              boxRef={boxRef}
+            />
+            <p style={styles.composerCropHint}>Drag to reposition, pinch to zoom — this is exactly how it'll show up in the feed.</p>
+            <button style={styles.composerImageRemove} onClick={removePhoto} aria-label="Remove photo">
               <Trash2 size={14} color="#FFFFFF" />
             </button>
           </div>
@@ -2480,10 +2636,10 @@ function ComposerModal({ onClose, onSubmit }) {
 
         <button
           style={{ ...styles.logBtn, marginBottom: 0, opacity: canPost ? 1 : 0.5 }}
-          disabled={!canPost}
-          onClick={() => onSubmit("note", text, image ? [image] : [])}
+          disabled={!canPost || posting}
+          onClick={handlePost}
         >
-          Post
+          {posting ? "Posting…" : "Post"}
         </button>
       </div>
     </div>
@@ -4782,6 +4938,8 @@ const styles = {
   composerTextarea: { width: "100%", background: "#171513", border: "1.5px solid #74C69D", borderRadius: 10, padding: 12, color: "#FFFFFF", fontSize: 14, resize: "none", marginBottom: 12, fontFamily: "inherit" },
   composerImageWrap: { position: "relative", marginBottom: 14 },
   composerImageRemove: { position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: 8, background: "rgba(11,31,25,0.7)", border: "none", display: "flex", alignItems: "center", justifyContent: "center" },
+  composerCropBox: { width: "100%", height: MEDIA_BOX_HEIGHT, borderRadius: 12, overflow: "hidden", position: "relative", border: "1.5px solid #74C69D", touchAction: "none", background: "#000000" },
+  composerCropHint: { fontSize: 11, color: "#9C9990", marginTop: 8, textAlign: "center", lineHeight: 1.4 },
   addPhotoBtn: { width: "100%", background: "#171513", border: "1px dashed #4A4844", borderRadius: 10, padding: "11px 10px", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, color: "#74C69D", fontSize: 13, fontWeight: 600, marginBottom: 14 },
   shareRow: { display: "flex", justifyContent: "space-between", alignItems: "center", background: "#171513", border: "1.5px solid #74C69D", borderRadius: 10, padding: "11px 13px", marginBottom: 14 },
   shareRowTitle: { fontSize: 13.5, fontWeight: 600, color: "#FFFFFF" },
