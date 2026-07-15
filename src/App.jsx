@@ -2435,6 +2435,32 @@ function PostViewerModal({ post: p, onClose, onLike, onOpenComments, onOpenLiker
   );
 }
 
+// Bakes a PhotoCropBox's current pan/zoom into a new image cropped to exactly
+// what the box showed, so PostMedia's own cover-crop has nothing left to trim.
+// Shared by every photo-attaching flow (feed composer, round photo, …) so
+// they all crop the same way instead of drifting apart over time.
+async function bakePhotoCrop(rawImage, naturalSize, boxWidth, zoom, pan, boxHeight = MEDIA_BOX_HEIGHT, outW = 900) {
+  if (!rawImage || !naturalSize || !boxWidth) return rawImage;
+  const baseScale = Math.max(boxWidth / naturalSize.w, boxHeight / naturalSize.h);
+  const dispW = naturalSize.w * baseScale * zoom;
+  const dispH = naturalSize.h * baseScale * zoom;
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    img.onload = () => {
+      const outH = Math.round(outW * (boxHeight / boxWidth));
+      const outScale = outW / boxWidth;
+      const dx = (boxWidth - dispW) / 2 + pan.x;
+      const dy = (boxHeight - dispH) / 2 + pan.y;
+      const canvas = document.createElement("canvas");
+      canvas.width = outW;
+      canvas.height = outH;
+      canvas.getContext("2d").drawImage(img, dx * outScale, dy * outScale, dispW * outScale, dispH * outScale);
+      resolve(canvas.toDataURL("image/jpeg", 0.82));
+    };
+    img.src = rawImage;
+  });
+}
+
 // Lets the poster drag/pinch a photo within a box that's the exact same
 // width x MEDIA_BOX_HEIGHT shape the feed renders it at, so what they see
 // while composing is what everyone else sees — instead of finding out after
@@ -2557,34 +2583,9 @@ function ComposerModal({ onClose, onSubmit }) {
     setBoxWidth(0);
   }
 
-  // Bakes the current pan/zoom into a new image cropped to exactly what the
-  // box showed, so PostMedia's own cover-crop has nothing left to trim.
-  async function bakeCrop() {
-    if (!rawImage || !naturalSize || !boxWidth) return rawImage;
-    const baseScale = Math.max(boxWidth / naturalSize.w, MEDIA_BOX_HEIGHT / naturalSize.h);
-    const dispW = naturalSize.w * baseScale * zoom;
-    const dispH = naturalSize.h * baseScale * zoom;
-    return new Promise((resolve) => {
-      const img = new window.Image();
-      img.onload = () => {
-        const outW = 900;
-        const outH = Math.round(outW * (MEDIA_BOX_HEIGHT / boxWidth));
-        const outScale = outW / boxWidth;
-        const dx = (boxWidth - dispW) / 2 + pan.x;
-        const dy = (MEDIA_BOX_HEIGHT - dispH) / 2 + pan.y;
-        const canvas = document.createElement("canvas");
-        canvas.width = outW;
-        canvas.height = outH;
-        canvas.getContext("2d").drawImage(img, dx * outScale, dy * outScale, dispW * outScale, dispH * outScale);
-        resolve(canvas.toDataURL("image/jpeg", 0.82));
-      };
-      img.src = rawImage;
-    });
-  }
-
   async function handlePost() {
     setPosting(true);
-    const finalImage = rawImage ? await bakeCrop() : null;
+    const finalImage = rawImage ? await bakePhotoCrop(rawImage, naturalSize, boxWidth, zoom, pan) : null;
     onSubmit("note", text, finalImage ? [finalImage] : []);
     setPosting(false);
   }
@@ -4119,20 +4120,41 @@ function LogRoundModal({ onClose, onSubmit }) {
 
   const [shareToFeed, setShareToFeed] = useState(true);
   const [caption, setCaption] = useState("");
-  const [roundPhoto, setRoundPhoto] = useState(null);
+  const [rawRoundPhoto, setRawRoundPhoto] = useState(null); // resized upload, pre-crop
+  const [roundPhotoNaturalSize, setRoundPhotoNaturalSize] = useState(null);
+  const [roundPhotoBoxWidth, setRoundPhotoBoxWidth] = useState(0);
+  const [roundPhotoZoom, setRoundPhotoZoom] = useState(1);
+  const [roundPhotoPan, setRoundPhotoPan] = useState({ x: 0, y: 0 });
   const [photoUploading, setPhotoUploading] = useState(false);
   const photoRef = useRef(null);
+  const roundPhotoBoxRef = useRef(null);
+
+  useEffect(() => {
+    if (!rawRoundPhoto || !roundPhotoBoxRef.current) return;
+    setRoundPhotoBoxWidth(roundPhotoBoxRef.current.clientWidth);
+  }, [rawRoundPhoto]);
+
   async function handleRoundPhoto(e) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
     setPhotoUploading(true);
     try {
-      setRoundPhoto(await fileToSharedImage(file));
+      const resized = await fileToSharedImage(file);
+      const size = await naturalSizeOf(resized);
+      setRawRoundPhoto(resized);
+      setRoundPhotoNaturalSize(size);
+      setRoundPhotoZoom(1);
+      setRoundPhotoPan({ x: 0, y: 0 });
     } catch (err) {
       // ignore — upload failed, user can retry
     }
     setPhotoUploading(false);
+  }
+  function removeRoundPhoto() {
+    setRawRoundPhoto(null);
+    setRoundPhotoNaturalSize(null);
+    setRoundPhotoBoxWidth(0);
   }
   const roundExtrasBlock = (
     <>
@@ -4171,10 +4193,20 @@ function LogRoundModal({ onClose, onSubmit }) {
             rows={2}
           />
           <input ref={photoRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleRoundPhoto} />
-          {roundPhoto ? (
+          {rawRoundPhoto ? (
             <div style={styles.composerImageWrap}>
-              <PhotoTile src={roundPhoto} style={{ width: "100%", aspectRatio: "4 / 3", borderRadius: 12 }} alt="Round photo preview" />
-              <button style={styles.composerImageRemove} onClick={() => setRoundPhoto(null)} aria-label="Remove photo">
+              <PhotoCropBox
+                src={rawRoundPhoto}
+                naturalSize={roundPhotoNaturalSize}
+                boxWidth={roundPhotoBoxWidth}
+                zoom={roundPhotoZoom}
+                pan={roundPhotoPan}
+                onPanChange={setRoundPhotoPan}
+                onZoomChange={setRoundPhotoZoom}
+                boxRef={roundPhotoBoxRef}
+              />
+              <p style={styles.composerCropHint}>Drag to reposition, pinch to zoom — this is exactly how it'll show up in the feed.</p>
+              <button style={styles.composerImageRemove} onClick={removeRoundPhoto} aria-label="Remove photo">
                 <Trash2 size={14} color="#FFFFFF" />
               </button>
             </div>
@@ -4231,7 +4263,7 @@ function LogRoundModal({ onClose, onSubmit }) {
         : front9 !== "" && back9 !== ""
       : holeScores.every((s) => s !== "");
 
-  function handleSubmit() {
+  async function handleSubmit() {
     const meta =
       method === "total"
         ? { method: "total" }
@@ -4245,7 +4277,9 @@ function LogRoundModal({ onClose, onSubmit }) {
               gir: method === "holebyholeStats" ? holeGIR[i] : undefined,
             })),
           };
-    meta.images = shareToFeed && roundPhoto ? [roundPhoto] : [];
+    const finalRoundPhoto =
+      shareToFeed && rawRoundPhoto ? await bakePhotoCrop(rawRoundPhoto, roundPhotoNaturalSize, roundPhotoBoxWidth, roundPhotoZoom, roundPhotoPan) : null;
+    meta.images = finalRoundPhoto ? [finalRoundPhoto] : [];
     meta.caption = shareToFeed ? caption : "";
     meta.shareToFeed = shareToFeed;
     meta.tee = tee || null;
