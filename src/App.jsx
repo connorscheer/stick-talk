@@ -399,13 +399,161 @@ function TeeIcon({ size = 16, color = "#FFFFFF" }) {
   );
 }
 
+// Small standalone birdie/bogey-style mark for the onboarding scorecard mockup.
+// Intentionally not the real ScoreMark/Scorecard code (that sizing pipeline is
+// locked, see stick-talk-ui skill) — this is a static sample for marketing only.
+function MockScoreMark({ score, diff }) {
+  const isCircle = diff <= -1;
+  const isSquare = diff >= 1;
+  const shape = isCircle ? "50%" : isSquare ? 4 : 0;
+  if (!isCircle && !isSquare) {
+    return <span style={{ fontSize: 13, fontWeight: 700, color: "#232220" }}>{score}</span>;
+  }
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: 21,
+        height: 21,
+        border: "1.5px solid #232220",
+        borderRadius: shape,
+        fontSize: 11.5,
+        fontWeight: 700,
+        color: "#232220",
+      }}
+    >
+      {score}
+    </span>
+  );
+}
+
+function OnboardFeedMock() {
+  return (
+    <div style={styles.mockFeedWrap}>
+      <div style={styles.mockFeedTopRow}>
+        <Avatar name="Jordan Pace" style={styles.mockAvatar} />
+        <div>
+          <div style={styles.mockName}>Jordan Pace</div>
+          <div style={styles.mockTime}>Today at 2:14 PM</div>
+        </div>
+      </div>
+      <p style={styles.mockCaption}>Carded a 78 at Colorow — new personal best 🔥</p>
+      <div style={styles.mockActionsRow}>
+        <span style={styles.mockActionItem}>
+          <span style={{ fontSize: 15 }}>👏</span> 12
+        </span>
+        <span style={styles.mockActionItem}>
+          <MessageCircle size={14} /> 4
+        </span>
+        <span style={styles.mockActionItem}>
+          <Share2 size={14} />
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function OnboardScorecardMock() {
+  const holes = [
+    { num: 1, par: 4, score: 4 },
+    { num: 2, par: 3, score: 2 },
+    { num: 3, par: 5, score: 7 },
+  ];
+  return (
+    <div style={styles.mockScoreWrap}>
+      <div style={styles.mockScoreTitle}>Colorow Mountain Park</div>
+      <div style={styles.mockHoleRow}>
+        {holes.map((h) => (
+          <div key={h.num} style={styles.mockHoleCell}>
+            <span style={styles.mockHoleNum}>{h.num}</span>
+            <span style={styles.mockHolePar}>{h.par}</span>
+            <MockScoreMark score={h.score} diff={h.score - h.par} />
+          </div>
+        ))}
+      </div>
+      <div style={styles.mockFooterRow}>
+        <span>Diff 4.2</span>
+        <span>Rating 71.4</span>
+        <span>Slope 128</span>
+      </div>
+    </div>
+  );
+}
+
+function OnboardGroupsMock() {
+  return (
+    <div style={styles.mockGroupWrap}>
+      <div style={styles.mockGroupHeader}>Sunday Skins 🏌️</div>
+      <div style={styles.mockChatCol}>
+        <span style={styles.mockBubbleTheirs}>Tee time moved to 8:40, everyone good?</span>
+        <span style={styles.mockBubbleMine}>Works for me 👍</span>
+        <span style={styles.mockBubbleTheirs}>See you all there</span>
+      </div>
+    </div>
+  );
+}
+
+function OnboardNotifsMock() {
+  const rows = [
+    { name: "Emilio Soria", text: "gave your round a golf clap 👏", time: "2m" },
+    { name: "Priya Nair", text: "started following you", time: "18m" },
+    { name: "Dev Patel", text: "requested to join Sunday Skins", time: "1h" },
+  ];
+  return (
+    <div style={styles.mockNotifWrap}>
+      <div style={styles.mockNotifTitle}>Notifications</div>
+      {rows.map((r) => (
+        <div key={r.name} style={styles.mockNotifRow}>
+          <Avatar name={r.name} style={{ ...styles.mockAvatar, width: 30, height: 30, fontSize: 11 }} />
+          <div>
+            <div style={styles.mockNotifText}>
+              <b>{r.name}</b> {r.text}
+            </div>
+            <div style={styles.mockNotifTime}>{r.time}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const ONBOARDING_SLIDES = [
+  { key: "feed", headline: "Get golf claps from your crew.", Mock: OnboardFeedMock },
+  { key: "rounds", headline: "Track every round you play.", Mock: OnboardScorecardMock },
+  { key: "groups", headline: "Chat privately with your group.", Mock: OnboardGroupsMock },
+  { key: "notifs", headline: "Never miss what's happening.", Mock: OnboardNotifsMock },
+];
+
 function AuthGate() {
   const [mode, setMode] = useState("signin"); // signin | signup
+  const [showForm, setShowForm] = useState(false);
+  const [slide, setSlide] = useState(0);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [busy, setBusy] = useState(false);
+  const touchStartX = useRef(null);
+
+  function openForm(nextMode) {
+    setMode(nextMode);
+    setError("");
+    setInfo("");
+    setShowForm(true);
+  }
+
+  function handleTouchStart(e) {
+    touchStartX.current = e.touches[0].clientX;
+  }
+  function handleTouchEnd(e) {
+    if (touchStartX.current == null) return;
+    const delta = e.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(delta) < 40) return;
+    setSlide((s) => (delta < 0 ? Math.min(s + 1, ONBOARDING_SLIDES.length - 1) : Math.max(s - 1, 0)));
+  }
 
   async function handleSubmit() {
     setError("");
@@ -434,25 +582,66 @@ function AuthGate() {
     }
   }
 
+  const globalStyleTag = (
+    <style>{`
+      @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&display=swap');
+      * { box-sizing: border-box; }
+      button { font-family: inherit; cursor: pointer; }
+      input { font-family: inherit; }
+      button:not(:disabled):active {
+        transform: scale(0.97);
+        transition: transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+    `}</style>
+  );
+
+  if (!showForm) {
+    const activeSlide = ONBOARDING_SLIDES[slide];
+    const ActiveMock = activeSlide.Mock;
+    return (
+      <div style={styles.onboardWrap}>
+        {globalStyleTag}
+        <div style={styles.onboardGlow} />
+        <img src="/stick-talk-wordmark-signin.png" alt="Stick Talk" style={styles.onboardWordmarkImg} />
+        <div style={styles.onboardCardFrame} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+          <ActiveMock />
+        </div>
+        <p style={styles.onboardHeadline}>{activeSlide.headline}</p>
+        <div style={styles.onboardDots}>
+          {ONBOARDING_SLIDES.map((s, i) => (
+            <button
+              key={s.key}
+              aria-label={`Slide ${i + 1}`}
+              onClick={() => setSlide(i)}
+              style={{ ...styles.onboardDot, ...(i === slide ? styles.onboardDotActive : {}) }}
+            />
+          ))}
+        </div>
+        <div style={styles.onboardActions}>
+          <button style={styles.logBtn} onClick={() => openForm("signup")}>
+            Join for free
+          </button>
+          <button style={styles.onboardLoginLink} onClick={() => openForm("signin")}>
+            Log in
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={styles.nameGateWrap}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&display=swap');
-        * { box-sizing: border-box; }
-        button { font-family: inherit; cursor: pointer; }
-        input { font-family: inherit; }
-        button:not(:disabled):active {
-          transform: scale(0.97);
-          transition: transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
-        }
-        @media (prefers-reduced-motion: reduce) {
-          *, *::before, *::after {
-            animation-duration: 0.01ms !important;
-            animation-iteration-count: 1 !important;
-            transition-duration: 0.01ms !important;
-          }
-        }
-      `}</style>
+      {globalStyleTag}
+      <button style={styles.onboardBackBtn} onClick={() => setShowForm(false)} aria-label="Back">
+        <ChevronLeft size={20} />
+      </button>
       <img src="/stick-talk-wordmark-signin.png" alt="Stick Talk" style={styles.nameGateWordmarkImg} />
       <p style={styles.nameGateCopy}>{mode === "signin" ? "Sign in to your account" : "Create an account"}</p>
       <input
@@ -4074,6 +4263,47 @@ const styles = {
   nameGateCopy: { fontSize: 14, color: "rgba(255,255,255,0.72)", marginBottom: 18 },
   nameGateInput: { width: "100%", background: "#F4F5F1", border: "1px solid #D8DCD3", borderRadius: 10, padding: "12px 14px", fontSize: 15, color: "#000000", marginBottom: 14, textAlign: "center" },
   nameGateFoot: { fontSize: 11.5, color: "rgba(255,255,255,0.6)", marginTop: 18, lineHeight: 1.5 },
+
+  // ---- Onboarding carousel (pre-login screen) ----
+  onboardWrap: { minHeight: "100vh", maxWidth: 420, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", backgroundColor: "#000000", textAlign: "center", fontFamily: "'Baloo 2', sans-serif", padding: "36px 22px 28px", position: "relative", overflow: "hidden" },
+  onboardGlow: { position: "absolute", top: -160, left: "50%", transform: "translateX(-50%)", width: 420, height: 420, borderRadius: "50%", background: "radial-gradient(circle, rgba(116,198,157,0.25) 0%, rgba(116,198,157,0) 70%)", pointerEvents: "none" },
+  onboardWordmarkImg: { height: 30, width: "auto", display: "block", marginBottom: 26, position: "relative" },
+  onboardCardFrame: { width: "100%", maxWidth: 300, background: "#FFFFFF", borderRadius: 26, boxShadow: "0 20px 46px rgba(0,0,0,0.4)", overflow: "hidden", position: "relative", touchAction: "pan-y" },
+  onboardHeadline: { fontSize: 21, fontWeight: 700, color: "#FFFFFF", margin: "24px 0 16px", lineHeight: 1.28, position: "relative" },
+  onboardDots: { display: "flex", gap: 6, position: "relative" },
+  onboardDot: { width: 6, height: 6, borderRadius: 3, background: "rgba(255,255,255,0.28)", transition: "all 220ms cubic-bezier(0.23, 1, 0.32, 1)", border: "none", padding: 0 },
+  onboardDotActive: { width: 18, background: "#74C69D" },
+  onboardActions: { width: "100%", marginTop: "auto", paddingTop: 28, position: "relative" },
+  onboardLoginLink: { color: "#74C69D", fontWeight: 700, fontSize: 14.5, background: "none", border: "none", padding: "10px", marginTop: 2 },
+  onboardBackBtn: { position: "absolute", top: 20, left: 20, width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", color: "#FFFFFF", zIndex: 2 },
+
+  // Onboarding feature mockups (static sample data, not live app state)
+  mockAvatar: { width: 34, height: 34, borderRadius: "50%", fontSize: 13, flexShrink: 0 },
+  mockFeedWrap: { padding: "18px 15px", textAlign: "left" },
+  mockFeedTopRow: { display: "flex", alignItems: "center", gap: 9, marginBottom: 11 },
+  mockName: { fontWeight: 700, fontSize: 13.5, color: "#000000" },
+  mockTime: { fontSize: 11, color: "#8A8880" },
+  mockCaption: { fontSize: 13.5, color: "#232220", marginBottom: 13, lineHeight: 1.4 },
+  mockActionsRow: { display: "flex", gap: 18, borderTop: "1px solid #ECE9E0", paddingTop: 11 },
+  mockActionItem: { display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: "#6B6960" },
+  mockScoreWrap: { background: "#F5EFDD", padding: "20px 15px", textAlign: "left" },
+  mockScoreTitle: { fontWeight: 700, fontSize: 13.5, color: "#232220", marginBottom: 12 },
+  mockHoleRow: { display: "flex", gap: 7, marginBottom: 14 },
+  mockHoleCell: { flex: 1, background: "#EDE4CC", borderRadius: 8, padding: "7px 4px 9px", textAlign: "center" },
+  mockHoleNum: { fontSize: 9.5, color: "#8A8878", display: "block", marginBottom: 4 },
+  mockHolePar: { fontSize: 10.5, color: "#5C5A52", fontWeight: 600, display: "block", marginBottom: 4 },
+  mockFooterRow: { display: "flex", justifyContent: "space-between", fontSize: 10.5, color: "#7A7868", borderTop: "1px solid #E3DAC0", paddingTop: 9 },
+  mockGroupWrap: { padding: "16px 15px 18px", textAlign: "left" },
+  mockGroupHeader: { fontWeight: 700, fontSize: 13.5, color: "#000000", marginBottom: 11, paddingBottom: 9, borderBottom: "1px solid #ECE9E0" },
+  mockChatCol: { display: "flex", flexDirection: "column", gap: 8 },
+  mockBubbleTheirs: { background: "#F1EFE7", color: "#232220", borderRadius: "14px 14px 14px 4px", padding: "8px 11px", fontSize: 12.5, alignSelf: "flex-start", maxWidth: "80%" },
+  mockBubbleMine: { background: "#74C69D", color: "#000000", borderRadius: "14px 14px 4px 14px", padding: "8px 11px", fontSize: 12.5, alignSelf: "flex-end", maxWidth: "80%", fontWeight: 600 },
+  mockNotifWrap: { padding: "16px 15px 18px", textAlign: "left" },
+  mockNotifTitle: { fontWeight: 700, fontSize: 13.5, color: "#000000", marginBottom: 11 },
+  mockNotifRow: { display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid #F1EFE7" },
+  mockNotifText: { fontSize: 12, color: "#232220", lineHeight: 1.35 },
+  mockNotifTime: { fontSize: 10.5, color: "#9C9A90", marginTop: 2 },
+
   app: {
     fontFamily: "'Baloo 2', sans-serif",
     backgroundColor: "#000000",
