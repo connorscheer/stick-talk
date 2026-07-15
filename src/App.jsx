@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { Flag, TrendingUp, TrendingDown, Minus, Users, User, MessageCircle, Plus, MapPin, X, SlidersHorizontal, Award, ChevronRight, ChevronLeft, Landmark, Navigation, Check, Image as ImageIcon, Camera, Send, MoreHorizontal, Trash2, Search, Bell, Share2 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
+import gsap from "gsap";
 import { supabase } from "./supabaseClient";
 
 // Layered radial-gradient texture: fine grain plus larger soft blotches,
@@ -581,6 +582,9 @@ function AuthGate() {
   const [info, setInfo] = useState("");
   const [busy, setBusy] = useState(false);
   const touchStartX = useRef(null);
+  const cardContentRef = useRef(null);
+  const headlineRef = useRef(null);
+  const prevSlideRef = useRef(0);
 
   function openForm(nextMode) {
     setMode(nextMode);
@@ -599,6 +603,21 @@ function AuthGate() {
     if (Math.abs(delta) < 40) return;
     setSlide((s) => (delta < 0 ? Math.min(s + 1, ONBOARDING_SLIDES.length - 1) : Math.max(s - 1, 0)));
   }
+
+  // Direction-aware slide transition (GSAP, per ui-ux-pro-max's "Page Transition"
+  // motion spec — power2.out, ~300-400ms). Card slides in from whichever side
+  // matches swipe/dot direction; headline does a smaller fade+rise just after.
+  useEffect(() => {
+    const direction = slide > prevSlideRef.current ? 1 : slide < prevSlideRef.current ? -1 : 0;
+    prevSlideRef.current = slide;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (cardContentRef.current) {
+      gsap.fromTo(cardContentRef.current, { x: direction * 36, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: "power2.out" });
+    }
+    if (headlineRef.current) {
+      gsap.fromTo(headlineRef.current, { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, ease: "power1.out", delay: 0.05 });
+    }
+  }, [slide]);
 
   async function handleSubmit() {
     setError("");
@@ -656,9 +675,13 @@ function AuthGate() {
         <div style={styles.onboardGlow} />
         <img src="/stick-talk-wordmark-signin.png" alt="Stick Talk" style={styles.onboardWordmarkImg} />
         <div style={styles.onboardCardFrame} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-          <ActiveMock />
+          <div ref={cardContentRef} style={{ height: "100%" }}>
+            <ActiveMock />
+          </div>
         </div>
-        <p style={styles.onboardHeadline}>{activeSlide.headline}</p>
+        <p ref={headlineRef} style={styles.onboardHeadline}>
+          {activeSlide.headline}
+        </p>
         <div style={styles.onboardDots}>
           {ONBOARDING_SLIDES.map((s, i) => (
             <button
@@ -4316,7 +4339,7 @@ const styles = {
   onboardCardFrame: { width: "100%", maxWidth: 320, height: 410, background: "#FFFFFF", borderRadius: 26, boxShadow: "0 20px 46px rgba(0,0,0,0.4)", overflow: "hidden", position: "relative", touchAction: "pan-y" },
   onboardHeadline: { fontSize: 21, fontWeight: 700, color: "#FFFFFF", margin: "24px 0 16px", lineHeight: 1.28, position: "relative" },
   onboardDots: { display: "flex", gap: 6, position: "relative" },
-  onboardDot: { width: 6, height: 6, borderRadius: 3, background: "rgba(255,255,255,0.28)", transition: "all 220ms cubic-bezier(0.23, 1, 0.32, 1)", border: "none", padding: 0 },
+  onboardDot: { width: 6, height: 6, borderRadius: 3, background: "rgba(255,255,255,0.28)", transition: "width 220ms cubic-bezier(0.23, 1, 0.32, 1), background-color 220ms cubic-bezier(0.23, 1, 0.32, 1)", border: "none", padding: 0 },
   onboardDotActive: { width: 18, background: "#74C69D" },
   onboardActions: { width: "100%", marginTop: "auto", paddingTop: 28, position: "relative" },
   onboardLoginLink: { color: "#74C69D", fontWeight: 700, fontSize: 14.5, background: "none", border: "none", padding: "10px", marginTop: 2 },
