@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
-import { Flag, TrendingUp, TrendingDown, Minus, Users, User, MessageCircle, Plus, MapPin, X, SlidersHorizontal, Award, ChevronRight, ChevronLeft, Landmark, Navigation, Check, Image as ImageIcon, Camera, Send, MoreHorizontal, Trash2, Search, Bell, Share2 } from "lucide-react";
+import { Flag, TrendingUp, TrendingDown, Minus, Users, User, MessageCircle, Plus, MapPin, X, SlidersHorizontal, Award, ChevronRight, ChevronLeft, Landmark, BarChart3, Check, Image as ImageIcon, Camera, Send, MoreHorizontal, Trash2, Search, Bell, Share2 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import gsap from "gsap";
 import { supabase } from "./supabaseClient";
@@ -400,7 +400,7 @@ function BrandMark({ size = 24, poleColor = "#000000" }) {
 }
 
 function StickTalkWordmark() {
-  return <img src="/stick-talk-wordmark.png" alt="Stick Talk" style={styles.stickTalkBadge} />;
+  return <img src="/stick-talk-wordmark-dark.png" alt="Stick Talk" style={styles.stickTalkBadge} />;
 }
 
 function TeeIcon({ size = 16, color = "#FFFFFF" }) {
@@ -1554,7 +1554,7 @@ export default function App() {
         {showSearch ? (
           <div style={styles.headerSearchRow}>
             <button style={styles.headerIconBtn} onClick={() => { setShowSearch(false); setSearchQuery(""); }} aria-label="Close search">
-              <ChevronLeft size={20} color="#FFFFFF" />
+              <ChevronLeft size={20} color="#171513" />
             </button>
             <input
               style={styles.headerSearchInput}
@@ -1571,24 +1571,24 @@ export default function App() {
                 <Avatar photo={myPhoto} name={myName} style={styles.avatarSm} />
               </button>
               <div style={styles.teesBadge}>
-                <TeeIcon size={11} />
+                <TeeIcon size={11} color="#171513" />
                 <span style={styles.teesBadgeText}>{myTees.toLocaleString()}</span>
               </div>
             </div>
             <span style={styles.headerTitle}>
               {tab === "home" && <StickTalkWordmark />}
               {tab === "match" && (matchSubTab === "groups" ? "Groups" : "Matches")}
-              {tab === "gps" && "GPS"}
+              {tab === "rounds" && "Rounds"}
               {tab === "profile" && "Profile"}
             </span>
             <div style={{ ...styles.headerSide, justifyContent: "flex-end" }}>
               {(tab === "home" || tab === "match") && (
                 <button style={styles.headerIconBtn} onClick={() => setShowSearch(true)} aria-label="Search">
-                  <Search size={19} color="#FFFFFF" />
+                  <Search size={19} color="#171513" />
                 </button>
               )}
               <button style={styles.headerIconBtn} onClick={openInbox} aria-label="Notifications">
-                <Bell size={19} color="#FFFFFF" />
+                <Bell size={19} color="#171513" />
                 {pendingCount + unseenActivityCount > 0 && <span style={styles.inboxBadge}>{pendingCount + unseenActivityCount}</span>}
               </button>
             </div>
@@ -1674,7 +1674,9 @@ export default function App() {
             onOpenGroup={(id) => setViewingGroup(id)}
           />
         )}
-        {tab === "gps" && <GpsTab />}
+        {tab === "rounds" && (
+          <RoundsTab rounds={rounds} trendData={trendData} avgScore={avgScore} bestRound={bestRound} onLogRound={() => setShowLogForm(true)} />
+        )}
         {tab === "profile" && (
           <ProfileTab
             myName={myName}
@@ -1709,7 +1711,7 @@ export default function App() {
         <NavBtn icon={Landmark} label="Clubhouse" active={tab === "home"} onClick={() => setTab("home")} />
         <NavBtn icon={Users} label="Social" active={tab === "match"} onClick={() => setTab("match")} />
         <CenterNavBtn onClick={() => setShowLogForm(true)} />
-        <NavBtn icon={Navigation} label="GPS" active={tab === "gps"} onClick={() => setTab("gps")} />
+        <NavBtn icon={BarChart3} label="Rounds" active={tab === "rounds"} onClick={() => setTab("rounds")} />
         <NavBtn icon={User} label="Profile" active={tab === "profile"} onClick={() => setTab("profile")} />
       </nav>
 
@@ -1872,7 +1874,7 @@ function CenterNavBtn({ onClick }) {
 function NavBtn({ icon: Icon, label, active, onClick }) {
   return (
     <button onClick={onClick} style={{ ...styles.navBtn, opacity: active ? 1 : 0.55 }}>
-      <Icon size={20} color="#FFFFFF" strokeWidth={active ? 2.6 : 2} />
+      <Icon size={20} color="#171513" strokeWidth={active ? 2.6 : 2} />
       <span style={{ ...styles.navLabel, fontWeight: active ? 700 : 500 }}>{label}</span>
       {active && <span style={styles.navDot} />}
     </button>
@@ -1907,11 +1909,11 @@ function HomeTab({
         <ImageIcon size={17} color="#74C69D" />
       </button>
 
-      <div style={{ ...styles.sectionLabel, color: "#FFFFFF", fontSize: 14, marginLeft: 14 }}>Clubhouse feed</div>
+      <div style={{ ...styles.sectionLabel, color: "#171513", fontSize: 14, marginLeft: 14 }}>Clubhouse feed</div>
 
       {posts.length === 0 && (
-        <div style={{ ...styles.empty, color: "rgba(255,255,255,0.75)" }}>
-          <p style={{ ...styles.emptyTitle, color: "#FFFFFF" }}>No posts yet</p>
+        <div style={{ ...styles.empty, color: "rgba(0,0,0,0.6)" }}>
+          <p style={{ ...styles.emptyTitle, color: "#171513" }}>No posts yet</p>
           <p style={styles.emptyBody}>Tap Post score below, or share an update above.</p>
         </div>
       )}
@@ -2349,12 +2351,12 @@ function PostViewerModal({ post: p, onClose, onLike, onOpenComments, onOpenLiker
     <div style={styles.postViewerOverlay}>
       <div style={styles.postViewerTop}>
         <button style={styles.postViewerIconBtn} onClick={onClose} aria-label="Back">
-          <ChevronLeft size={22} color="#FFFFFF" />
+          <ChevronLeft size={22} color="#171513" />
         </button>
         {isMine ? (
           <div style={{ position: "relative" }}>
             <button style={styles.postViewerIconBtn} onClick={() => setMenuOpen((o) => !o)} aria-label="Post options">
-              <MoreHorizontal size={20} color="#FFFFFF" />
+              <MoreHorizontal size={20} color="#171513" />
             </button>
             {menuOpen && (
               <>
@@ -2387,7 +2389,7 @@ function PostViewerModal({ post: p, onClose, onLike, onOpenComments, onOpenLiker
           <button style={styles.postViewerAuthorRow} onClick={() => onOpenProfile(p.author)}>
             <Avatar photo={authorPhoto} name={p.author} style={{ ...styles.postAvatar, width: 40, height: 40 }} />
             <div style={{ textAlign: "left" }}>
-              <div style={{ ...styles.cardName, color: "#FFFFFF" }}>{p.author}</div>
+              <div style={{ ...styles.cardName, color: "#171513" }}>{p.author}</div>
               <div style={styles.cardMeta}>
                 {p.kind === "round" ? (
                   <>
@@ -2400,7 +2402,7 @@ function PostViewerModal({ post: p, onClose, onLike, onOpenComments, onOpenLiker
             </div>
           </button>
 
-          {p.text && <div style={{ ...styles.noteText, color: "#FFFFFF", padding: "0 16px", marginTop: 10 }}>{p.text}</div>}
+          {p.text && <div style={{ ...styles.noteText, color: "#171513", padding: "0 16px", marginTop: 10 }}>{p.text}</div>}
 
           <div style={styles.postViewerDivider} />
 
@@ -2629,7 +2631,7 @@ function ComposerModal({ onClose, onSubmit }) {
         <div style={styles.modalHead}>
           <span style={styles.modalTitle}>Share an update</span>
           <button style={styles.iconBtn} onClick={onClose} aria-label="Close">
-            <X size={18} color="#FFFFFF" />
+            <X size={18} color="#171513" />
           </button>
         </div>
 
@@ -2694,7 +2696,7 @@ function CommentsModal({ post, onClose, onAddComment, onOpenProfile }) {
         <div style={styles.modalHead}>
           <span style={styles.modalTitle}>Comments</span>
           <button style={styles.iconBtn} onClick={onClose} aria-label="Close">
-            <X size={18} color="#FFFFFF" />
+            <X size={18} color="#171513" />
           </button>
         </div>
 
@@ -2743,7 +2745,7 @@ function LikersModal({ post, onClose, onOpenProfile }) {
         <div style={styles.modalHead}>
           <span style={styles.modalTitle}>Golf claps</span>
           <button style={styles.iconBtn} onClick={onClose} aria-label="Close">
-            <X size={18} color="#FFFFFF" />
+            <X size={18} color="#171513" />
           </button>
         </div>
 
@@ -2776,7 +2778,7 @@ function FollowListModal({ title, names, profiles, myFollowingMap, myName, onTog
         <div style={styles.modalHead}>
           <span style={styles.modalTitle}>{title}</span>
           <button style={styles.iconBtn} onClick={onClose} aria-label="Close">
-            <X size={18} color="#FFFFFF" />
+            <X size={18} color="#171513" />
           </button>
         </div>
 
@@ -2824,8 +2826,8 @@ function FollowListModal({ title, names, profiles, myFollowingMap, myName, onTog
 function UserSearchResults({ results, profiles, myFollowing, onToggleFollow, onOpenProfile }) {
   if (results.length === 0) {
     return (
-      <div style={{ ...styles.empty, color: "rgba(255,255,255,0.75)" }}>
-        <p style={{ ...styles.emptyTitle, color: "#FFFFFF" }}>No one found</p>
+      <div style={{ ...styles.empty, color: "rgba(0,0,0,0.6)" }}>
+        <p style={{ ...styles.emptyTitle, color: "#171513" }}>No one found</p>
         <p style={styles.emptyBody}>Try a different name.</p>
       </div>
     );
@@ -2883,7 +2885,7 @@ function ProfileViewModal({
         <div style={styles.modalHead}>
           <span style={styles.modalTitle}>Profile</span>
           <button style={styles.iconBtn} onClick={onClose} aria-label="Close">
-            <X size={18} color="#FFFFFF" />
+            <X size={18} color="#171513" />
           </button>
         </div>
 
@@ -2936,7 +2938,7 @@ function ProfileViewModal({
         {profile ? (
           <>
             <div style={styles.profileViewStamp}>
-              <Award size={14} color="#FFFFFF" />
+              <Award size={14} color="#74C69D" />
               <div style={styles.profileViewStampLabel}>HANDICAP INDEX</div>
               <div style={styles.profileViewStampValue}>{profile.handicap != null ? profile.handicap.toFixed(1) : "—"}</div>
             </div>
@@ -2957,38 +2959,61 @@ function ProfileViewModal({
   );
 }
 
-function GpsTab() {
+function RoundsTab({ rounds, trendData, avgScore, bestRound, onLogRound }) {
+  const sorted = [...rounds].sort((a, b) => new Date(b.date) - new Date(a.date));
+
   return (
-    <div style={{ ...styles.tabPad, textAlign: "center", paddingTop: 50 }}>
-      <div style={styles.gpsIconWrap}>
-        <Navigation size={26} color="#000000" />
+    <div style={styles.tabPad}>
+      <div style={styles.statRow}>
+        <Stat label="Rounds" value={rounds.length} />
+        <Stat label="Avg score" value={avgScore ?? "—"} />
+        <Stat label="Best round" value={bestRound ?? "—"} accent />
       </div>
-      <p style={{ ...styles.emptyTitle, color: "#FFFFFF" }}>On-course GPS is coming soon</p>
-      <p style={{ ...styles.emptyBody, color: "rgba(255,255,255,0.75)" }}>
-        Live distances to front, center, and back of every green — pulled up automatically as you move around the course.
-      </p>
-      <div style={styles.gpsPreview}>
-        <div style={styles.gpsPreviewRow}>
-          <span>Front</span>
-          <span style={styles.gpsPreviewNum}>142</span>
+
+      {trendData && trendData.length > 1 && (
+        <div style={styles.chartCard}>
+          <div style={styles.chartTitle}>Handicap trend</div>
+          <ResponsiveContainer width="100%" height={110}>
+            <LineChart data={trendData} margin={{ top: 6, right: 10, bottom: 0, left: 10 }}>
+              <XAxis dataKey="date" hide />
+              <YAxis hide reversed domain={["dataMin - 1", "dataMax + 1"]} />
+              <Tooltip
+                contentStyle={{ background: "#FFFFFF", border: "1.5px solid #74C69D", borderRadius: 8, fontSize: 12 }}
+                labelStyle={{ color: "#9C9990" }}
+                itemStyle={{ color: "#74C69D" }}
+                formatter={(v) => [typeof v === "number" ? v.toFixed(1) : v, "Handicap"]}
+              />
+              <Line type="monotone" dataKey="hcp" stroke="#74C69D" strokeWidth={2.5} dot={{ r: 3, fill: "#74C69D", strokeWidth: 0 }} activeDot={{ r: 5 }} />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
-        <div style={{ ...styles.gpsPreviewRow, borderTop: "1px solid rgba(255,255,255,0.10)", borderBottom: "1px solid rgba(255,255,255,0.10)" }}>
-          <span>Center</span>
-          <span style={styles.gpsPreviewNum}>158</span>
+      )}
+
+      <div style={{ ...styles.sectionLabel, marginLeft: 2 }}>Your rounds</div>
+
+      {sorted.length === 0 ? (
+        <div style={styles.empty}>
+          <p style={styles.emptyTitle}>No rounds logged yet</p>
+          <p style={styles.emptyBody}>Post a scorecard to start tracking your handicap.</p>
+          <button style={{ ...styles.logBtn, marginTop: 14 }} onClick={onLogRound}>
+            Log a round
+          </button>
         </div>
-        <div style={styles.gpsPreviewRow}>
-          <span>Back</span>
-          <span style={styles.gpsPreviewNum}>171</span>
-        </div>
-      </div>
+      ) : (
+        sorted.map((r) => (
+          <div key={r.id} style={{ marginBottom: 16 }}>
+            <Scorecard round={r} large />
+          </div>
+        ))
+      )}
     </div>
   );
 }
 
 function Stat({ label, value, accent }) {
   return (
-    <div style={{ ...styles.statBox, borderColor: accent ? "#74C69D" : "#4A4844" }}>
-      <div style={{ ...styles.statValue, color: accent ? "#74C69D" : "#FFFFFF" }}>{value}</div>
+    <div style={{ ...styles.statBox, borderColor: accent ? "#74C69D" : "#ECE9E0" }}>
+      <div style={{ ...styles.statValue, color: accent ? "#74C69D" : "#171513" }}>{value}</div>
       <div style={styles.statLabel}>{label}</div>
     </div>
   );
@@ -3037,11 +3062,11 @@ function MatchTab({
 
       {view === "matches" && (
         <>
-          <div style={{ ...styles.sectionLabel, color: "#FFFFFF" }}>Open matches</div>
+          <div style={{ ...styles.sectionLabel, color: "#171513" }}>Open matches</div>
 
           {sorted.length === 0 && (
-            <div style={{ ...styles.empty, color: "rgba(255,255,255,0.75)" }}>
-              <p style={{ ...styles.emptyTitle, color: "#FFFFFF" }}>No open matches yet</p>
+            <div style={{ ...styles.empty, color: "rgba(0,0,0,0.6)" }}>
+              <p style={{ ...styles.emptyTitle, color: "#171513" }}>No open matches yet</p>
               <p style={styles.emptyBody}>Post one above — course, when, and how many spots you need.</p>
             </div>
           )}
@@ -3076,7 +3101,7 @@ function MatchTab({
                         ...styles.reqBtn,
                         background: iJoined ? "transparent" : full ? "transparent" : "#74C69D",
                         color: iJoined ? "#74C69D" : full ? "#6B6963" : "#1C1B1A",
-                        borderColor: iJoined ? "#74C69D" : "#4A4844",
+                        borderColor: iJoined ? "#74C69D" : "#D8DCD3",
                         opacity: full ? 0.6 : 1,
                       }}
                       onClick={() => !full && onToggleJoin(m.id)}
@@ -3122,13 +3147,13 @@ function MatchTab({
             </label>
           </div>
 
-          <div style={{ ...styles.sectionLabel, color: "#FFFFFF" }}>
+          <div style={{ ...styles.sectionLabel, color: "#171513" }}>
             {filteredGolfers.length} golfer{filteredGolfers.length === 1 ? "" : "s"} nearby
           </div>
 
           {filteredGolfers.length === 0 && (
-            <div style={{ ...styles.empty, color: "rgba(255,255,255,0.75)" }}>
-              <p style={{ ...styles.emptyTitle, color: "#FFFFFF" }}>No golfers match your filters</p>
+            <div style={{ ...styles.empty, color: "rgba(0,0,0,0.6)" }}>
+              <p style={{ ...styles.emptyTitle, color: "#171513" }}>No golfers match your filters</p>
               <p style={styles.emptyBody}>Try widening your distance or handicap range above.</p>
             </div>
           )}
@@ -3187,11 +3212,11 @@ function GroupsTab({ groups, myName, profiles, onCreateGroup, onOpenGroup }) {
         />
       </div>
 
-      <div style={{ ...styles.sectionLabel, color: "#FFFFFF" }}>{q ? "Results" : "Your groups"}</div>
+      <div style={{ ...styles.sectionLabel, color: "#171513" }}>{q ? "Results" : "Your groups"}</div>
 
       {sorted.length === 0 && (
-        <div style={{ ...styles.empty, color: "rgba(255,255,255,0.75)" }}>
-          <p style={{ ...styles.emptyTitle, color: "#FFFFFF" }}>{q ? "No groups found" : "No groups yet"}</p>
+        <div style={{ ...styles.empty, color: "rgba(0,0,0,0.6)" }}>
+          <p style={{ ...styles.emptyTitle, color: "#171513" }}>{q ? "No groups found" : "No groups yet"}</p>
           <p style={styles.emptyBody}>{q ? "Try a different name." : "Start one above — round-trip buddies, weekend league, whoever."}</p>
         </div>
       )}
@@ -3244,7 +3269,7 @@ function CreateGroupModal({ onClose, onSubmit }) {
         <div style={styles.modalHead}>
           <span style={styles.modalTitle}>Create a group</span>
           <button style={styles.iconBtn} onClick={onClose} aria-label="Close">
-            <X size={18} color="#FFFFFF" />
+            <X size={18} color="#171513" />
           </button>
         </div>
 
@@ -3305,19 +3330,19 @@ function GroupChatModal({ group, myName, profiles, onClose, onSend, onLeave, onD
     <div style={styles.postViewerOverlay} onClick={(e) => e.stopPropagation()}>
       <div style={styles.postViewerTop}>
         <button style={styles.postViewerIconBtn} onClick={onClose} aria-label="Back">
-          <ChevronLeft size={22} color="#FFFFFF" />
+          <ChevronLeft size={22} color="#171513" />
         </button>
         <div style={{ textAlign: "center" }}>
-          <div style={{ ...styles.cardName, color: "#FFFFFF" }}>{group.name}</div>
+          <div style={{ ...styles.cardName, color: "#171513" }}>{group.name}</div>
           <div style={{ ...styles.activityTime, marginTop: 0 }}>{members.length} {members.length === 1 ? "member" : "members"}</div>
         </div>
         <div style={{ position: "relative", display: "flex", gap: 4 }}>
           <button style={styles.postViewerIconBtn} onClick={() => setShowMembers((v) => !v)} aria-label="Members">
-            <Users size={19} color="#FFFFFF" />
+            <Users size={19} color="#171513" />
             {isMine && pendingNames.length > 0 && <span style={styles.inboxBadge}>{pendingNames.length}</span>}
           </button>
           <button style={styles.postViewerIconBtn} onClick={() => setMenuOpen((o) => !o)} aria-label="Group options">
-            <MoreHorizontal size={20} color="#FFFFFF" />
+            <MoreHorizontal size={20} color="#171513" />
           </button>
           {menuOpen && (
             <>
@@ -3378,8 +3403,8 @@ function GroupChatModal({ group, myName, profiles, onClose, onSend, onLeave, onD
         <>
           <div ref={scrollRef} style={styles.groupChatScroll}>
             {messages.length === 0 && (
-              <div style={{ ...styles.empty, color: "rgba(255,255,255,0.75)" }}>
-                <p style={{ ...styles.emptyTitle, color: "#FFFFFF" }}>No messages yet</p>
+              <div style={{ ...styles.empty, color: "rgba(0,0,0,0.6)" }}>
+                <p style={{ ...styles.emptyTitle, color: "#171513" }}>No messages yet</p>
                 <p style={styles.emptyBody}>Say hey to the group.</p>
               </div>
             )}
@@ -3390,7 +3415,7 @@ function GroupChatModal({ group, myName, profiles, onClose, onSend, onLeave, onD
                   <Avatar photo={profiles?.[m.author]?.photo} name={m.author} style={{ ...styles.postAvatar, width: 28, height: 28 }} />
                   <div style={{ ...styles.groupChatBubble, ...(mine ? styles.groupChatBubbleMine : {}) }}>
                     {!mine && <div style={styles.groupChatAuthor}>{m.author}</div>}
-                    <div style={{ color: mine ? "#000000" : "#FFFFFF" }}>{m.text}</div>
+                    <div style={{ color: mine ? "#000000" : "#171513" }}>{m.text}</div>
                     <div style={{ ...styles.activityTime, color: mine ? "rgba(0,0,0,0.55)" : "#6B6963" }}>{timeAgo(m.time)}</div>
                   </div>
                 </div>
@@ -3443,7 +3468,7 @@ function GroupDetailModal({ group, myName, profiles, onClose, onRequestJoin, onC
         <div style={styles.modalHead}>
           <span style={styles.modalTitle}>{group.name}</span>
           <button style={styles.iconBtn} onClick={onClose} aria-label="Close">
-            <X size={18} color="#FFFFFF" />
+            <X size={18} color="#171513" />
           </button>
         </div>
 
@@ -3522,7 +3547,7 @@ function MatchComposerModal({ onClose, onSubmit }) {
         <div style={styles.modalHead}>
           <span style={styles.modalTitle}>Post a match</span>
           <button style={styles.iconBtn} onClick={onClose} aria-label="Close">
-            <X size={18} color="#FFFFFF" />
+            <X size={18} color="#171513" />
           </button>
         </div>
 
@@ -3583,7 +3608,7 @@ function InboxModal({ inbox, activity = [], seenActivityIds = [], golfers, myFol
         <div style={styles.modalHead}>
           <span style={styles.modalTitle}>Notifications</span>
           <button style={styles.iconBtn} onClick={onClose} aria-label="Close">
-            <X size={18} color="#FFFFFF" />
+            <X size={18} color="#171513" />
           </button>
         </div>
 
@@ -3606,7 +3631,7 @@ function InboxModal({ inbox, activity = [], seenActivityIds = [], golfers, myFol
                   <div style={styles.avatarSm}>{initialsOf(n.actor)}</div>
                   <div style={{ flex: 1 }}>
                     <div style={styles.cardMeta}>
-                      <span style={{ color: "#FFFFFF", fontWeight: 700 }}>{n.actor}</span> started following you
+                      <span style={{ color: "#171513", fontWeight: 700 }}>{n.actor}</span> started following you
                     </div>
                     <div style={styles.activityTime}>{timeAgo(n.time)}</div>
                   </div>
@@ -3628,7 +3653,7 @@ function InboxModal({ inbox, activity = [], seenActivityIds = [], golfers, myFol
                   <div style={styles.avatarSm}>{initialsOf(n.actor)}</div>
                   <div style={{ flex: 1 }}>
                     <div style={styles.cardMeta}>
-                      <span style={{ color: "#FFFFFF", fontWeight: 700 }}>{n.actor}</span> wants to join <span style={{ color: "#FFFFFF", fontWeight: 700 }}>{n.groupName}</span>
+                      <span style={{ color: "#171513", fontWeight: 700 }}>{n.actor}</span> wants to join <span style={{ color: "#171513", fontWeight: 700 }}>{n.groupName}</span>
                     </div>
                     <div style={styles.activityTime}>{timeAgo(n.time)}</div>
                   </div>
@@ -3651,11 +3676,11 @@ function InboxModal({ inbox, activity = [], seenActivityIds = [], golfers, myFol
               <div style={{ flex: 1 }}>
                 {n.type === "like" ? (
                   <div style={styles.cardMeta}>
-                    <span style={{ color: "#FFFFFF", fontWeight: 700 }}>{n.actor}</span> gave you a golf clap 👏
+                    <span style={{ color: "#171513", fontWeight: 700 }}>{n.actor}</span> gave you a golf clap 👏
                   </div>
                 ) : (
                   <div style={styles.cardMeta}>
-                    <span style={{ color: "#FFFFFF", fontWeight: 700 }}>{n.actor}</span> commented: "{n.text}"
+                    <span style={{ color: "#171513", fontWeight: 700 }}>{n.actor}</span> commented: "{n.text}"
                   </div>
                 )}
                 <div style={styles.activityTime}>{timeAgo(n.time)}</div>
@@ -3777,7 +3802,7 @@ function ProfileTab({
             {photoUploading ? <span style={styles.avatarEditSpinner} /> : <Camera size={13} color="#000000" />}
           </div>
         </button>
-        <div style={{ ...styles.profileName, color: "#FFFFFF" }}>{myName}</div>
+        <div style={{ ...styles.profileName, color: "#171513" }}>{myName}</div>
         {editingCourse ? (
           <div style={styles.homeCourseEditRow}>
             <input
@@ -3799,7 +3824,7 @@ function ProfileTab({
               setEditingCourse(true);
             }}
           >
-            <MapPin size={12} color="rgba(255,255,255,0.78)" /> {homeCourse || "Add your home course"}
+            <MapPin size={12} color="rgba(0,0,0,0.6)" /> {homeCourse || "Add your home course"}
           </button>
         )}
 
@@ -3853,7 +3878,7 @@ function ProfileTab({
               <XAxis dataKey="date" hide />
               <YAxis hide reversed domain={["dataMin - 1", "dataMax + 1"]} />
               <Tooltip
-                contentStyle={{ background: "#3A3936", border: "1.5px solid #74C69D", borderRadius: 8, fontSize: 12 }}
+                contentStyle={{ background: "#FFFFFF", border: "1.5px solid #74C69D", borderRadius: 8, fontSize: 12 }}
                 labelStyle={{ color: "#9C9990" }}
                 itemStyle={{ color: "#74C69D" }}
                 formatter={(v) => [typeof v === "number" ? v.toFixed(1) : v, "Handicap"]}
@@ -3911,7 +3936,7 @@ function GhinModal({ initialNumber, initialHandicap, onClose, onSave }) {
         <div style={styles.modalHead}>
           <span style={styles.modalTitle}>Add your GHIN info</span>
           <button style={styles.iconBtn} onClick={onClose} aria-label="Close">
-            <X size={18} color="#FFFFFF" />
+            <X size={18} color="#171513" />
           </button>
         </div>
 
@@ -4328,7 +4353,7 @@ function LogRoundModal({ onClose, onSubmit }) {
             {step === "method" ? "Post score" : course || "New round"}
           </span>
           <button style={styles.iconBtn} onClick={onClose} aria-label="Close">
-            <X size={18} color="#FFFFFF" />
+            <X size={18} color="#171513" />
           </button>
         </div>
 
@@ -4690,28 +4715,26 @@ const styles = {
 
   app: {
     fontFamily: "'Baloo 2', sans-serif",
-    backgroundColor: "#000000",
+    backgroundColor: "#FFFFFF",
     minHeight: "100vh",
     maxWidth: 420,
     margin: "0 auto",
     display: "flex",
     flexDirection: "column",
-    color: "#FFFFFF",
+    color: "#171513",
     position: "relative",
-    boxShadow: "0 0 60px rgba(0,0,0,0.15)",
+    boxShadow: "0 0 60px rgba(0,0,0,0.08)",
   },
   header: {
-    background: "linear-gradient(135deg, #3A3936 0%, #232220 70%)",
+    background: "#FFFFFF",
     padding: "16px 14px",
-    borderBottom: "1px solid rgba(255,255,255,0.10)",
+    borderBottom: "1px solid #ECE9E0",
     position: "relative",
     overflow: "hidden",
   },
   headerTexture: {
     position: "absolute",
     inset: 0,
-    backgroundImage: "radial-gradient(circle, rgba(237,230,214,0.035) 1.5px, transparent 1.5px)",
-    backgroundSize: "16px 16px",
     pointerEvents: "none",
   },
   headerRow: { display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 9, position: "relative" },
@@ -4720,20 +4743,20 @@ const styles = {
   headerAvatarBtn: { background: "none", border: "none", padding: 0, display: "flex", flexShrink: 0 },
   headerIconBtn: { position: "relative", background: "none", border: "none", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
   teesBadge: { height: 44, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "0 4px", flexShrink: 0 },
-  teesBadgeText: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 12, color: "#FFFFFF" },
-  headerTitle: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 24, letterSpacing: 0, color: "#FFFFFF", justifySelf: "center", whiteSpace: "nowrap", textShadow: "0 2px 10px rgba(0,0,0,0.25)" },
-  headerSearchInput: { flex: 1, background: "rgba(237,230,214,0.08)", border: "none", borderRadius: 9, padding: "9px 12px", color: "#FFFFFF", fontSize: 14 },
+  teesBadgeText: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 12, color: "#171513" },
+  headerTitle: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 24, letterSpacing: 0, color: "#171513", justifySelf: "center", whiteSpace: "nowrap" },
+  headerSearchInput: { flex: 1, background: "#F4F5F1", border: "1px solid #D8DCD3", borderRadius: 9, padding: "9px 12px", color: "#171513", fontSize: 14 },
   inboxBadge: { position: "absolute", top: -4, right: -4, background: "#C1443A", color: "#FFFFFF", fontSize: 10, fontWeight: 700, borderRadius: 9, minWidth: 17, height: 17, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" },
-  inboxCard: { background: "#232220", border: "1.5px solid #74C69D", borderRadius: 14, padding: 13, marginBottom: 10 },
-  activityRow: { display: "flex", alignItems: "center", gap: 10, width: "100%", background: "#232220", border: "1.5px solid #74C69D", borderRadius: 14, padding: 13, marginBottom: 10, textAlign: "left" },
+  inboxCard: { background: "#FFFFFF", border: "1.5px solid #ECE9E0", borderRadius: 14, padding: 13, marginBottom: 10, boxShadow: "0 2px 10px rgba(0,0,0,0.05)" },
+  activityRow: { display: "flex", alignItems: "center", gap: 10, width: "100%", background: "#FFFFFF", border: "1.5px solid #ECE9E0", borderRadius: 14, padding: 13, marginBottom: 10, textAlign: "left", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" },
   activityRowClickable: { display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, background: "none", border: "none", padding: 0, textAlign: "left" },
   activityUnreadDot: { width: 8, height: 8, borderRadius: "50%", background: "#74C69D", flexShrink: 0 },
   activityTime: { fontSize: 11, color: "#6B6963", marginTop: 3 },
   followBackBtn: { flexShrink: 0, background: "#74C69D", border: "none", borderRadius: 999, padding: "7px 12px", color: "#000000", fontSize: 12, fontWeight: 700 },
-  followBackBtnDone: { background: "none", border: "1.5px solid #4A4844", color: "#9C9990" },
+  followBackBtnDone: { background: "none", border: "1.5px solid #D8DCD3", color: "#9C9990" },
   inboxNote: { fontSize: 12.5, color: "#A3A199", marginTop: 5, fontStyle: "italic" },
   declineBtn: { flex: 1, background: "transparent", border: "1.5px solid #74C69D", color: "#A3A199", borderRadius: 8, fontSize: 12.5, fontWeight: 700, padding: "8px 0" },
-  declineBtnSm: { background: "transparent", border: "1.5px solid #4A4844", borderRadius: 999, width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center" },
+  declineBtnSm: { background: "transparent", border: "1.5px solid #D8DCD3", borderRadius: 999, width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center" },
   acceptBtn: { flex: 1, background: "#74C69D", border: "none", color: "#000000", borderRadius: 8, fontSize: 12.5, fontWeight: 700, padding: "8px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 },
   declinedChip: { background: "rgba(193,68,58,0.12)", color: "#C1443A", fontSize: 11, fontWeight: 700, borderRadius: 7, padding: "5px 10px", border: "1px solid #C1443A" },
   main: { flex: 1, overflowY: "auto", paddingBottom: 90 },
@@ -4744,33 +4767,29 @@ const styles = {
     width: "100%",
     maxWidth: 420,
     display: "flex",
-    background: "#232220",
-    borderTop: "1px solid rgba(45,106,79,0.35)",
+    background: "#FFFFFF",
+    borderTop: "1px solid #ECE9E0",
     borderRadius: "20px 20px 0 0",
-    boxShadow: "0 -8px 24px rgba(0,0,0,0.12)",
+    boxShadow: "0 -8px 24px rgba(0,0,0,0.06)",
     padding: "10px 6px 14px",
   },
   navBtn: { flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, position: "relative" },
-  navLabel: { fontSize: 11, color: "#FFFFFF" },
+  navLabel: { fontSize: 11, color: "#171513" },
   navDot: { position: "absolute", bottom: -8, width: 4, height: 4, borderRadius: 4, background: "#74C69D" },
   centerNavWrap: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, position: "relative" },
   centerNavBtn: {
     width: 54,
     height: 54,
     borderRadius: "50%",
-    background: "#232220",
+    background: "#FFFFFF",
     border: "3px solid #74C69D",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     marginTop: -28,
-    boxShadow: "0 4px 14px rgba(0,0,0,0.35)",
+    boxShadow: "0 4px 14px rgba(0,0,0,0.15)",
   },
-  centerNavLabel: { fontSize: 10.5, color: "#FFFFFF", fontWeight: 600 },
-  gpsIconWrap: { width: 56, height: 56, borderRadius: "50%", background: "#74C69D", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" },
-  gpsPreview: { background: "#232220", border: "1.5px solid #74C69D", borderRadius: 14, marginTop: 22, overflow: "hidden" },
-  gpsPreviewRow: { display: "flex", justifyContent: "space-between", padding: "12px 18px", fontSize: 13, color: "#A3A199" },
-  gpsPreviewNum: { fontFamily: "'Baloo 2', sans-serif", color: "#74C69D", fontWeight: 700, fontSize: 15 },
+  centerNavLabel: { fontSize: 10.5, color: "#171513", fontWeight: 600 },
   logBtn: {
     width: "100%",
     background: "linear-gradient(135deg, #8ED9AE, #74C69D)",
@@ -4787,80 +4806,80 @@ const styles = {
     marginBottom: 14,
     boxShadow: "0 6px 18px rgba(116,198,157,0.22)",
   },
-  card: { borderBottom: "1.5px solid #74C69D", padding: "16px 2px" },
-  rowCard: { background: "#232220", border: "1.5px solid #74C69D", borderRadius: 12, padding: 12, marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" },
+  card: { borderBottom: "1px solid #ECE9E0", padding: "16px 2px" },
+  rowCard: { background: "#FFFFFF", border: "1.5px solid #ECE9E0", borderRadius: 12, padding: 12, marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" },
   cardTopRow: { display: "flex", alignItems: "center", gap: 12 },
   postAuthorBtn: { display: "flex", alignItems: "center", gap: 12, flex: 1, background: "none", border: "none", padding: 0, textAlign: "left" },
-  homeCourseDisplayBtn: { display: "flex", alignItems: "center", gap: 5, background: "none", border: "none", padding: 0, fontSize: 13, color: "rgba(255,255,255,0.75)", margin: "0 auto" },
+  homeCourseDisplayBtn: { display: "flex", alignItems: "center", gap: 5, background: "none", border: "none", padding: 0, fontSize: 13, color: "rgba(0,0,0,0.6)", margin: "0 auto" },
   followCountsRow: { display: "flex", justifyContent: "center", gap: 22, marginTop: 12 },
-  followCountsBtn: { background: "none", border: "none", padding: 0, fontSize: 13.5, color: "rgba(255,255,255,0.75)", fontWeight: 600 },
-  followCountsNum: { color: "#FFFFFF", fontWeight: 800 },
+  followCountsBtn: { background: "none", border: "none", padding: 0, fontSize: 13.5, color: "rgba(0,0,0,0.6)", fontWeight: 600 },
+  followCountsNum: { color: "#171513", fontWeight: 800 },
   followListRow: { display: "flex", alignItems: "center", gap: 10, width: "100%", background: "none", border: "none", padding: "10px 0" },
   homeCourseEditRow: { display: "flex", alignItems: "center", gap: 6, marginTop: 2 },
   homeCourseInput: { background: "#F4F5F1", border: "1px solid #D8DCD3", borderRadius: 8, padding: "6px 10px", fontSize: 13, color: "#000000", textAlign: "center" },
   homeCourseSaveBtn: { width: 26, height: 26, borderRadius: "50%", background: "#74C69D", border: "none", display: "flex", alignItems: "center", justifyContent: "center" },
-  cardName: { fontWeight: 700, fontSize: 16.5, color: "#FFFFFF" },
+  cardName: { fontWeight: 700, fontSize: 16.5, color: "#171513" },
   cardMeta: { fontSize: 13, color: "#9C9990", display: "flex", alignItems: "center", gap: 4, marginTop: 3 },
-  noteText: { fontSize: 17, color: "#FFFFFF", marginTop: 8, lineHeight: 1.45, fontWeight: 500 },
-  avatarSm: { width: 36, height: 36, borderRadius: "50%", border: "1.5px solid #74C69D", background: "#4A4844", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12.5, fontWeight: 700, flexShrink: 0, boxSizing: "border-box" },
-  postAvatar: { width: 46, height: 46, borderRadius: "50%", border: "1.5px solid #74C69D", overflow: "hidden", background: "#4A4844", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 700, flexShrink: 0 },
-  avatarLg: { width: "100%", height: "100%", borderRadius: "50%", background: "#4A4844", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 700 },
-  cardActions: { display: "flex", marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)" },
+  noteText: { fontSize: 17, color: "#171513", marginTop: 8, lineHeight: 1.45, fontWeight: 500 },
+  avatarSm: { width: 36, height: 36, borderRadius: "50%", background: "#EDE9DD", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12.5, fontWeight: 700, flexShrink: 0, boxSizing: "border-box" },
+  postAvatar: { width: 46, height: 46, borderRadius: "50%", overflow: "hidden", background: "#EDE9DD", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 700, flexShrink: 0 },
+  avatarLg: { width: "100%", height: "100%", borderRadius: "50%", background: "#EDE9DD", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 700 },
+  cardActions: { display: "flex", marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(0,0,0,0.08)" },
   actionBtnFull: { flex: 1, background: "none", border: "none", display: "flex", alignItems: "center", justifyContent: "center", padding: "9px 0" },
   socialLine: { fontSize: 13, color: "#9C9990", marginTop: 14 },
   likersRow: { display: "flex", alignItems: "center", gap: 8, marginTop: 14, background: "none", border: "none", padding: 0 },
   likersStack: { display: "flex", alignItems: "center" },
-  likersAvatar: { width: 24, height: 24, borderRadius: "50%", border: "1.5px solid #74C69D", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9.5, fontWeight: 700, color: "#000000" },
+  likersAvatar: { width: 24, height: 24, borderRadius: "50%", border: "2px solid #FFFFFF", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9.5, fontWeight: 700, color: "#000000" },
   likersCountText: { fontSize: 13, color: "#9C9990" },
   kebabBtn: { background: "none", border: "none", padding: 4, display: "flex" },
   menuBackdrop: { position: "fixed", inset: 0, background: "transparent", border: "none", zIndex: 5 },
-  postMenu: { position: "absolute", top: "calc(100% + 4px)", right: 0, background: "#3A3936", border: "1.5px solid #74C69D", borderRadius: 10, overflow: "hidden", zIndex: 6, boxShadow: "0 8px 20px rgba(0,0,0,0.35)", minWidth: 150, transformOrigin: "top right", animation: "menuIn 180ms cubic-bezier(0.23, 1, 0.32, 1) both" },
+  postMenu: { position: "absolute", top: "calc(100% + 4px)", right: 0, background: "#FFFFFF", border: "1.5px solid #ECE9E0", borderRadius: 10, overflow: "hidden", zIndex: 6, boxShadow: "0 8px 20px rgba(0,0,0,0.14)", minWidth: 150, transformOrigin: "top right", animation: "menuIn 180ms cubic-bezier(0.23, 1, 0.32, 1) both" },
   postMenuDeleteItem: { width: "100%", background: "transparent", border: "none", padding: "10px 12px", display: "flex", alignItems: "center", gap: 8, color: "#C1443A", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" },
   statRow: { display: "flex", gap: 10, marginBottom: 14 },
-  statBox: { flex: 1, background: "#232220", border: "1px solid", borderRadius: 12, padding: "10px 6px", textAlign: "center" },
+  statBox: { flex: 1, background: "#FFFFFF", border: "1px solid", borderRadius: 12, padding: "10px 6px", textAlign: "center", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" },
   statValue: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 24 },
   statLabel: { fontSize: 11, color: "#9C9990", marginTop: 2 },
-  chartCard: { background: "#232220", border: "1.5px solid #74C69D", borderRadius: 14, padding: "12px 8px", marginBottom: 14 },
+  chartCard: { background: "#FFFFFF", border: "1.5px solid #ECE9E0", borderRadius: 14, padding: "12px 8px", marginBottom: 14, boxShadow: "0 2px 10px rgba(0,0,0,0.05)" },
   chartTitle: { fontSize: 12.5, color: "#9C9990", marginBottom: 4, paddingLeft: 8 },
   sectionLabel: { fontSize: 12.5, color: "#9C9990", fontWeight: 600, margin: "4px 0 8px", textTransform: "uppercase", letterSpacing: 0.6 },
   stickTalkBadge: { height: 46, width: "auto", display: "block" },
-  filterCard: { background: "#232220", border: "1.5px solid #74C69D", borderRadius: 14, padding: 14, marginBottom: 14 },
+  filterCard: { background: "#FFFFFF", border: "1.5px solid #ECE9E0", borderRadius: 14, padding: 14, marginBottom: 14, boxShadow: "0 2px 10px rgba(0,0,0,0.05)" },
   filterHead: { display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: "#74C69D", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.6 },
-  filterLabel: { display: "block", fontSize: 12.5, color: "#FFFFFF", marginBottom: 10 },
+  filterLabel: { display: "block", fontSize: 12.5, color: "#171513", marginBottom: 10 },
   slider: { width: "100%", marginTop: 6, accentColor: "#74C69D" },
-  matchCard: { background: "#232220", border: "1.5px solid #74C69D", borderRadius: 14, padding: 12, marginBottom: 10, display: "flex", gap: 10, alignItems: "flex-start" },
-  groupCard: { display: "flex", alignItems: "center", gap: 10, width: "100%", background: "#232220", border: "1.5px solid #74C69D", borderRadius: 14, padding: 12, marginBottom: 10, textAlign: "left" },
-  groupSearchWrap: { display: "flex", alignItems: "center", gap: 8, background: "#171513", border: "1.5px solid #4A4844", borderRadius: 10, padding: "9px 12px", marginTop: 12, marginBottom: 14 },
-  groupSearchInput: { flex: 1, background: "none", border: "none", color: "#FFFFFF", fontSize: 14 },
+  matchCard: { background: "#FFFFFF", border: "1.5px solid #ECE9E0", borderRadius: 14, padding: 12, marginBottom: 10, display: "flex", gap: 10, alignItems: "flex-start", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" },
+  groupCard: { display: "flex", alignItems: "center", gap: 10, width: "100%", background: "#FFFFFF", border: "1.5px solid #ECE9E0", borderRadius: 14, padding: 12, marginBottom: 10, textAlign: "left", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" },
+  groupSearchWrap: { display: "flex", alignItems: "center", gap: 8, background: "#F4F5F1", border: "1.5px solid #D8DCD3", borderRadius: 10, padding: "9px 12px", marginTop: 12, marginBottom: 14 },
+  groupSearchInput: { flex: 1, background: "none", border: "none", color: "#171513", fontSize: 14 },
   groupChatScroll: { flex: 1, minHeight: 0, overflowY: "auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 12 },
   groupChatRow: { display: "flex", gap: 8, alignItems: "flex-end", maxWidth: "82%" },
-  groupChatBubble: { background: "#232220", border: "1.5px solid #4A4844", borderRadius: 14, padding: "8px 12px", fontSize: 14 },
+  groupChatBubble: { background: "#F1EFE7", border: "none", borderRadius: 14, padding: "8px 12px", fontSize: 14 },
   groupChatBubbleMine: { background: "#74C69D", border: "1.5px solid #74C69D", marginLeft: "auto", alignSelf: "flex-end" },
   groupChatAuthor: { fontSize: 11, color: "#74C69D", fontWeight: 700, marginBottom: 2 },
-  groupChatInputRow: { flexShrink: 0, display: "flex", gap: 8, alignItems: "center", padding: "10px 16px", borderTop: "1px solid rgba(255,255,255,0.1)" },
-  groupChatInput: { flex: 1, background: "#171513", border: "1.5px solid #4A4844", borderRadius: 999, padding: "10px 16px", color: "#FFFFFF", fontSize: 14 },
+  groupChatInputRow: { flexShrink: 0, display: "flex", gap: 8, alignItems: "center", padding: "10px 16px", borderTop: "1px solid rgba(0,0,0,0.08)" },
+  groupChatInput: { flex: 1, background: "#F4F5F1", border: "1px solid #D8DCD3", borderRadius: 999, padding: "10px 16px", color: "#171513", fontSize: 14 },
   groupChatSendBtn: { flexShrink: 0, background: "#74C69D", border: "none", borderRadius: "50%", width: 38, height: 38, display: "flex", alignItems: "center", justifyContent: "center" },
   groupJoinedTag: { marginLeft: 8, fontSize: 10.5, color: "#74C69D", fontWeight: 700 },
   availText: { fontSize: 11.5, color: "#74C69D", marginTop: 3 },
-  hcpChip: { fontFamily: "'Baloo 2', sans-serif", fontSize: 11, background: "#171513", border: "1.5px solid #74C69D", borderRadius: 6, padding: "2px 7px" },
+  hcpChip: { fontFamily: "'Baloo 2', sans-serif", fontSize: 11, background: "#F4F5F1", border: "1.5px solid #74C69D", borderRadius: 6, padding: "2px 7px" },
   reqBtn: { border: "1px solid", borderRadius: 8, fontSize: 11.5, fontWeight: 700, padding: "6px 10px", whiteSpace: "nowrap" },
   empty: { textAlign: "center", padding: "30px 10px", color: "#9C9990" },
-  emptyTitle: { fontWeight: 700, color: "#FFFFFF", marginBottom: 4 },
+  emptyTitle: { fontWeight: 700, color: "#171513", marginBottom: 4 },
   emptyBody: { fontSize: 13, lineHeight: 1.5 },
   profileHead: { textAlign: "center", marginBottom: 20 },
   profileName: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 23, marginTop: 10 },
   avatarRing: { width: 76, height: 76, borderRadius: "50%", border: "3px solid #74C69D", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto", padding: 0, overflow: "hidden" },
   avatarEditBtn: { position: "relative", background: "none", border: "none", padding: 0, display: "block", margin: "0 auto" },
-  avatarEditBadge: { position: "absolute", bottom: 0, right: 0, width: 26, height: 26, borderRadius: "50%", background: "#74C69D", border: "2px solid #232220", display: "flex", alignItems: "center", justifyContent: "center" },
+  avatarEditBadge: { position: "absolute", bottom: 0, right: 0, width: 26, height: 26, borderRadius: "50%", background: "#74C69D", border: "2px solid #FFFFFF", display: "flex", alignItems: "center", justifyContent: "center" },
   avatarEditSpinner: { width: 11, height: 11, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.3)", borderTopColor: "#000000", animation: "spin 0.8s linear infinite" },
   avatarRingSm: { width: 62, height: 62, borderRadius: "50%", border: "3px solid #74C69D", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto", padding: 0, overflow: "hidden" },
   profileViewHead: { textAlign: "center", marginBottom: 16 },
-  profileViewName: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 20, color: "#FFFFFF", marginTop: 8 },
+  profileViewName: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 20, color: "#171513", marginTop: 8 },
   profileViewYouTag: { fontSize: 13, color: "#74C69D", fontWeight: 500 },
   profileViewCourse: { fontSize: 12.5, color: "#9C9990", marginTop: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 },
   followBtn: { marginTop: 12, background: "#74C69D", border: "none", borderRadius: 999, padding: "9px 22px", color: "#000000", fontSize: 13.5, fontWeight: 700 },
-  followBtnDone: { background: "none", border: "1.5px solid #4A4844", color: "#9C9990" },
-  profileViewStamp: { background: "#171513", border: "1.5px solid #74C69D", borderRadius: 12, padding: "12px 10px", display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 14 },
+  followBtnDone: { background: "none", border: "1.5px solid #D8DCD3", color: "#9C9990" },
+  profileViewStamp: { background: "#FFFFFF", border: "1.5px solid #ECE9E0", borderRadius: 12, padding: "12px 10px", display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 14, boxShadow: "0 2px 10px rgba(0,0,0,0.05)" },
   profileViewStampLabel: { fontSize: 10, color: "#9C9990", fontWeight: 700, letterSpacing: 0.5, marginTop: 4 },
   profileViewStampValue: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 30, color: "#74C69D", marginTop: 2 },
   stampWrap: { display: "flex", justifyContent: "center", marginBottom: 18 },
@@ -4888,61 +4907,61 @@ const styles = {
   },
   stampEyebrow: { fontSize: 9, fontWeight: 700, color: "#000000", letterSpacing: 1 },
   stampValue: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 32, color: "#000000", lineHeight: 1.15 },
-  ghinCard: { background: "#232220", border: "1.5px solid #74C69D", borderRadius: 14, padding: 13, marginBottom: 14 },
+  ghinCard: { background: "#FFFFFF", border: "1.5px solid #ECE9E0", borderRadius: 14, padding: 13, marginBottom: 14, boxShadow: "0 2px 10px rgba(0,0,0,0.05)" },
   ghinIconWrap: { width: 34, height: 34, borderRadius: 8, background: "#74C69D", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
   connectBtn: { background: "transparent", border: "1.5px solid #74C69D", color: "#74C69D", borderRadius: 7, fontSize: 12, fontWeight: 700, padding: "6px 12px" },
   connectedChip: { background: "rgba(116,198,157,0.15)", color: "#74C69D", fontSize: 11, fontWeight: 700, borderRadius: 7, padding: "5px 10px", border: "1.5px solid #74C69D" },
   ghinModalCopy: { fontSize: 13, color: "#A3A199", lineHeight: 1.5, marginBottom: 14 },
-  settingsRow: { width: "100%", background: "#232220", border: "1.5px solid #74C69D", borderRadius: 10, padding: "13px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", color: "#FFFFFF", fontSize: 13.5, marginBottom: 8 },
+  settingsRow: { width: "100%", background: "#FFFFFF", border: "1.5px solid #ECE9E0", borderRadius: 10, padding: "13px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", color: "#171513", fontSize: 13.5, marginBottom: 8, boxShadow: "0 2px 10px rgba(0,0,0,0.05)" },
   modalOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", zIndex: 10, animation: "overlayIn 200ms cubic-bezier(0.23, 1, 0.32, 1) both" },
-  postViewerOverlay: { position: "fixed", inset: 0, background: "#000000", zIndex: 20, display: "flex", flexDirection: "column", overflowY: "auto", fontFamily: "'Baloo 2', sans-serif" },
+  postViewerOverlay: { position: "fixed", inset: 0, background: "#FFFFFF", zIndex: 20, display: "flex", flexDirection: "column", overflowY: "auto", fontFamily: "'Baloo 2', sans-serif" },
   postViewerMediaWrap: { display: "flex", flexDirection: "column", flexShrink: 0 },
-  postViewerTop: { flexShrink: 0, background: "#000000", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px" },
+  postViewerTop: { flexShrink: 0, background: "#FFFFFF", borderBottom: "1px solid #ECE9E0", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px" },
   postViewerIconBtn: { background: "none", border: "none", borderRadius: "50%", width: 38, height: 38, display: "flex", alignItems: "center", justifyContent: "center" },
   postViewerBody: { flex: 1, minHeight: 0, overflowY: "auto", touchAction: "pan-y", padding: "12px 0 18px" },
   postViewerAuthorRow: { display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", padding: "0 16px", textAlign: "left" },
-  postViewerDivider: { height: 1, background: "rgba(255,255,255,0.12)", margin: "14px 0" },
+  postViewerDivider: { height: 1, background: "rgba(0,0,0,0.08)", margin: "14px 0" },
   postViewerActionRow: { display: "flex", alignItems: "center", gap: 22, padding: "0 16px" },
   postViewerAction: { display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", padding: 0, color: "#9C9990", fontSize: 14, fontWeight: 600 },
-  postViewerReplyBar: { display: "block", width: "calc(100% - 32px)", margin: "0 16px", textAlign: "left", background: "#1C1B19", border: "none", borderRadius: 999, padding: "12px 16px", color: "#9C9990", fontSize: 14 },
-  modal: { background: "#232220", width: "100%", maxWidth: 420, margin: "0 auto", borderRadius: "18px 18px 0 0", padding: 20, border: "1.5px solid #74C69D", borderBottom: "none", animation: "sheetIn 250ms cubic-bezier(0.32, 0.72, 0, 1) both" },
+  postViewerReplyBar: { display: "block", width: "calc(100% - 32px)", margin: "0 16px", textAlign: "left", background: "#F4F5F1", border: "1px solid #D8DCD3", borderRadius: 999, padding: "12px 16px", color: "#9C9990", fontSize: 14 },
+  modal: { background: "#FFFFFF", width: "100%", maxWidth: 420, margin: "0 auto", borderRadius: "18px 18px 0 0", padding: 20, border: "1.5px solid #ECE9E0", borderBottom: "none", boxShadow: "0 -8px 30px rgba(0,0,0,0.12)", animation: "sheetIn 250ms cubic-bezier(0.32, 0.72, 0, 1) both" },
   modalHead: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
   modalTitle: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 19 },
   iconBtn: { background: "none", border: "none", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginRight: -12 },
   formLabel: { display: "block", fontSize: 12.5, color: "#9C9990", marginBottom: 12 },
   spotsRow: { display: "flex", alignItems: "center", gap: 14, marginTop: 8 },
-  spotsBtn: { width: 32, height: 32, borderRadius: "50%", background: "#171513", border: "1.5px solid #74C69D", color: "#74C69D", fontSize: 18, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" },
-  spotsValue: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 22, color: "#FFFFFF", minWidth: 20, textAlign: "center" },
-  input: { width: "100%", background: "#171513", border: "1.5px solid #74C69D", borderRadius: 8, padding: "9px 10px", color: "#FFFFFF", fontSize: 14, marginTop: 5 },
+  spotsBtn: { width: 32, height: 32, borderRadius: "50%", background: "#F4F5F1", border: "1.5px solid #74C69D", color: "#74C69D", fontSize: 18, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" },
+  spotsValue: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 22, color: "#171513", minWidth: 20, textAlign: "center" },
+  input: { width: "100%", background: "#F4F5F1", border: "1px solid #D8DCD3", borderRadius: 8, padding: "9px 10px", color: "#171513", fontSize: 14, marginTop: 5 },
   suggestList: {
     position: "absolute",
     top: "calc(100% + 4px)",
     left: 0,
     right: 0,
-    background: "#3A3936",
-    border: "1.5px solid #74C69D",
+    background: "#FFFFFF",
+    border: "1.5px solid #ECE9E0",
     borderRadius: 8,
     overflow: "hidden",
     zIndex: 20,
-    boxShadow: "0 8px 20px rgba(0,0,0,0.35)",
+    boxShadow: "0 8px 20px rgba(0,0,0,0.14)",
   },
   suggestItem: {
     width: "100%",
     background: "transparent",
     border: "none",
-    borderBottom: "1px solid rgba(255,255,255,0.10)",
+    borderBottom: "1px solid rgba(0,0,0,0.08)",
     padding: "9px 10px",
     display: "flex",
     alignItems: "center",
     gap: 8,
-    color: "#FFFFFF",
+    color: "#171513",
     fontSize: 13.5,
     textAlign: "left",
   },
   methodBtn: {
     width: "100%",
-    background: "#3A3936",
-    border: "1.5px solid #74C69D",
+    background: "#FFFFFF",
+    border: "1.5px solid #ECE9E0",
     borderRadius: 12,
     padding: "14px 16px",
     display: "flex",
@@ -4951,43 +4970,45 @@ const styles = {
     gap: 4,
     marginBottom: 12,
     textAlign: "center",
+    boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
   },
-  methodTitle: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 16, letterSpacing: 1.2, color: "#FFFFFF" },
+  methodTitle: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 16, letterSpacing: 1.2, color: "#171513" },
   methodDesc: { fontSize: 12, color: "#A3A199" },
   toggleRow: { display: "flex", gap: 8, marginBottom: 14 },
-  toggleChip: { flex: 1, background: "#171513", border: "1.5px solid #74C69D", borderRadius: 8, padding: "9px 6px", fontSize: 12.5, color: "#A3A199", fontWeight: 600 },
+  toggleChip: { flex: 1, background: "#F4F5F1", border: "1.5px solid #D8DCD3", borderRadius: 8, padding: "9px 6px", fontSize: 12.5, color: "#A3A199", fontWeight: 600 },
   toggleChipActive: { background: "#74C69D", color: "#000000", border: "1.5px solid #74C69D" },
   ratingSlopeRow: { display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#9C9990", marginBottom: 12, lineHeight: 1.4 },
   teeChipRow: { display: "flex", flexWrap: "wrap", gap: 8, marginTop: 6 },
-  teeChip: { background: "#171513", border: "1.5px solid #74C69D", borderRadius: 8, padding: "7px 12px", fontSize: 12.5, color: "#A3A199", fontWeight: 600 },
+  teeChip: { background: "#F4F5F1", border: "1.5px solid #D8DCD3", borderRadius: 8, padding: "7px 12px", fontSize: 12.5, color: "#A3A199", fontWeight: 600 },
   teeChipActive: { background: "#74C69D", color: "#000000", border: "1.5px solid #74C69D" },
   backBtn: { flex: "0 0 84px", background: "transparent", border: "1.5px solid #74C69D", borderRadius: 10, color: "#A3A199", fontWeight: 700, fontSize: 13.5 },
   holeHeaderRow: { display: "flex", alignItems: "center", gap: 8, padding: "0 4px 6px", fontSize: 11, color: "#9C9990", fontWeight: 700, letterSpacing: 0.4 },
-  holeRow: { display: "flex", alignItems: "center", gap: 8, padding: "5px 4px", borderBottom: "1px solid rgba(255,255,255,0.10)" },
+  holeRow: { display: "flex", alignItems: "center", gap: 8, padding: "5px 4px", borderBottom: "1px solid rgba(0,0,0,0.08)" },
   holeNum: { width: 26, fontSize: 12.5, color: "#A3A199", fontWeight: 600 },
-  holeInput: { width: 50, background: "#171513", border: "1.5px solid #74C69D", borderRadius: 7, padding: "6px 4px", color: "#FFFFFF", fontSize: 13, textAlign: "center" },
-  dotToggle: { width: 22, height: 22, borderRadius: "50%", border: "1.5px solid #4A4844", background: "transparent" },
+  holeInput: { width: 50, background: "#F4F5F1", border: "1px solid #D8DCD3", borderRadius: 7, padding: "6px 4px", color: "#171513", fontSize: 13, textAlign: "center" },
+  dotToggle: { width: 22, height: 22, borderRadius: "50%", border: "1.5px solid #D8DCD3", background: "transparent" },
   dotToggleActive: { background: "#74C69D", borderColor: "#74C69D" },
-  holeTotalRow: { textAlign: "right", fontSize: 13.5, color: "#FFFFFF", padding: "10px 4px 0", fontWeight: 600 },
+  holeTotalRow: { textAlign: "right", fontSize: 13.5, color: "#171513", padding: "10px 4px 0", fontWeight: 600 },
   holeGridSectionLabel: { fontSize: 11, color: "#9C9990", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, margin: "10px 2px 6px" },
   holeGridRow: { display: "flex", gap: 4, marginBottom: 4 },
-  holeGridCell: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", background: "#171513", borderRadius: 8, padding: "6px 2px 8px" },
+  holeGridCell: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", background: "#F4F5F1", borderRadius: 8, padding: "6px 2px 8px" },
   holeGridNum: { fontSize: 10, color: "#9C9990", fontWeight: 700, marginBottom: 2 },
   // Placeholder par until real per-course par data is wired in — currently
   // just the generic PAR_LAYOUT used everywhere else as a default.
   holeGridPar: { fontSize: 8.5, color: "#74C69D", fontWeight: 600, marginBottom: 4 },
-  holeGridInput: { width: "100%", background: "#232220", border: "1.5px solid #74C69D", borderRadius: 6, padding: "5px 0", color: "#FFFFFF", fontSize: 14, fontWeight: 700, textAlign: "center" },
+  holeGridInput: { width: "100%", background: "#FFFFFF", border: "1.5px solid #D8DCD3", borderRadius: 6, padding: "5px 0", color: "#171513", fontSize: 14, fontWeight: 700, textAlign: "center" },
 
   // ---- Composer / feed extras ----
-  composerTrigger: { width: "100%", background: "#232220", border: "1.5px solid #74C69D", borderRadius: 14, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10, marginBottom: 18, textAlign: "left", boxShadow: "0 4px 16px rgba(0,0,0,0.1)" },
+  composerTrigger: { width: "100%", background: "#FFFFFF", border: "1.5px solid #ECE9E0", borderRadius: 14, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10, marginBottom: 18, textAlign: "left", boxShadow: "0 4px 16px rgba(0,0,0,0.06)" },
   composerPlaceholder: { flex: 1, fontSize: 13, color: "#9C9990" },
-  sectionBreak: { height: 1, background: "rgba(255,255,255,0.18)", margin: "0 0 16px" },
+  sectionBreak: { height: 1, background: "rgba(0,0,0,0.10)", margin: "0 0 16px" },
   snapshotCard: {
-    background: "#232220",
-    border: "1.5px solid #74C69D",
+    background: "#FFFFFF",
+    border: "1.5px solid #ECE9E0",
     borderRadius: 16,
     padding: "10px 14px 12px",
     marginBottom: 14,
+    boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
   },
   snapshotHeadRow: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
   snapshotEyebrow: { fontSize: 11.5, color: "#9C9990", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" },
@@ -4995,21 +5016,21 @@ const styles = {
   snapshotRow: { display: "flex" },
   snapshotCol: { flex: 1 },
   snapshotLabel: { fontSize: 11, color: "#9C9990" },
-  snapshotValue: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 21, color: "#FFFFFF", marginTop: 2, lineHeight: 1 },
-  matchConfirmedTile: { display: "flex", alignItems: "center", gap: 10, background: "#232220", border: "1.5px solid #74C69D", borderRadius: 14, padding: "10px 14px", marginBottom: 14 },
+  snapshotValue: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 21, color: "#171513", marginTop: 2, lineHeight: 1 },
+  matchConfirmedTile: { display: "flex", alignItems: "center", gap: 10, background: "#FFFFFF", border: "1.5px solid #ECE9E0", borderRadius: 14, padding: "10px 14px", marginBottom: 14, boxShadow: "0 2px 10px rgba(0,0,0,0.05)" },
   matchConfirmedIconWrap: { width: 28, height: 28, borderRadius: "50%", background: "#74C69D", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  matchConfirmedText: { fontSize: 13.5, color: "#FFFFFF", fontWeight: 600, lineHeight: 1.35 },
+  matchConfirmedText: { fontSize: 13.5, color: "#171513", fontWeight: 600, lineHeight: 1.35 },
   matchConfirmedMeta: { fontSize: 11, color: "#9C9990", marginTop: 2 },
-  composerTextarea: { width: "100%", background: "#171513", border: "1.5px solid #74C69D", borderRadius: 10, padding: 12, color: "#FFFFFF", fontSize: 14, resize: "none", marginBottom: 12, fontFamily: "inherit" },
+  composerTextarea: { width: "100%", background: "#F4F5F1", border: "1px solid #D8DCD3", borderRadius: 10, padding: 12, color: "#171513", fontSize: 14, resize: "none", marginBottom: 12, fontFamily: "inherit" },
   composerImageWrap: { position: "relative", marginBottom: 14 },
   composerImageRemove: { position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: 8, background: "rgba(11,31,25,0.7)", border: "none", display: "flex", alignItems: "center", justifyContent: "center" },
   composerCropBox: { width: "100%", height: MEDIA_BOX_HEIGHT, borderRadius: 12, overflow: "hidden", position: "relative", border: "1.5px solid #74C69D", touchAction: "none", background: "#000000" },
   composerCropHint: { fontSize: 11, color: "#9C9990", marginTop: 8, textAlign: "center", lineHeight: 1.4 },
   cropOverlay: { position: "absolute", inset: 0, pointerEvents: "none" },
   cropCorner: { position: "absolute", width: 18, height: 18 },
-  addPhotoBtn: { width: "100%", background: "#171513", border: "1px dashed #4A4844", borderRadius: 10, padding: "11px 10px", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, color: "#74C69D", fontSize: 13, fontWeight: 600, marginBottom: 14 },
-  shareRow: { display: "flex", justifyContent: "space-between", alignItems: "center", background: "#171513", border: "1.5px solid #74C69D", borderRadius: 10, padding: "11px 13px", marginBottom: 14 },
-  shareRowTitle: { fontSize: 13.5, fontWeight: 600, color: "#FFFFFF" },
+  addPhotoBtn: { width: "100%", background: "#F4F5F1", border: "1px dashed #D8DCD3", borderRadius: 10, padding: "11px 10px", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, color: "#74C69D", fontSize: 13, fontWeight: 600, marginBottom: 14 },
+  shareRow: { display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F4F5F1", border: "1px solid #D8DCD3", borderRadius: 10, padding: "11px 13px", marginBottom: 14 },
+  shareRowTitle: { fontSize: 13.5, fontWeight: 600, color: "#171513" },
   shareRowSub: { fontSize: 11.5, color: "#9C9990", marginTop: 2 },
   switchTrack: { width: 40, height: 22, borderRadius: 11, background: "#4A4844", border: "none", padding: 2, display: "flex", alignItems: "center", flexShrink: 0, transition: "background 150ms cubic-bezier(0.23, 1, 0.32, 1)" },
   switchTrackOn: { background: "#74C69D" },
@@ -5073,11 +5094,11 @@ const styles = {
   scorecardTicketScore: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 800, fontSize: 44, color: "#000000", lineHeight: 1 },
   scorecardTicketToPar: { fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 20 },
   scorecardTicketFoot: { fontFamily: "'Baloo 2', sans-serif", fontSize: 12, color: "#6B6963", textAlign: "center" },
-  commentPreviewWrap: { marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)" },
-  commentPreviewLine: { fontSize: 13.5, color: "#D6D4CC", marginBottom: 4, lineHeight: 1.45 },
-  commentPreviewAuthor: { fontWeight: 700, color: "#FFFFFF" },
+  commentPreviewWrap: { marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(0,0,0,0.08)" },
+  commentPreviewLine: { fontSize: 13.5, color: "#4A4844", marginBottom: 4, lineHeight: 1.45 },
+  commentPreviewAuthor: { fontWeight: 700, color: "#171513" },
   viewAllComments: { background: "none", border: "none", color: "#9C9990", fontSize: 12, marginTop: 2 },
   commentRowBtn: { display: "flex", gap: 10, marginBottom: 14, width: "100%", background: "none", border: "none", padding: 0, textAlign: "left" },
-  commentInputRow: { display: "flex", gap: 8, alignItems: "center", paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.10)" },
+  commentInputRow: { display: "flex", gap: 8, alignItems: "center", paddingTop: 10, borderTop: "1px solid rgba(0,0,0,0.08)" },
   commentSendBtn: { width: 36, height: 36, borderRadius: "50%", background: "#74C69D", border: "none", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
 };
